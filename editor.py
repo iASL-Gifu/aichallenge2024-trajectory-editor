@@ -1,11 +1,15 @@
 import csv
 import math
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backend_bases import MouseButton
 import tkinter as tk
 from tkinter import filedialog
+import subprocess
+
+
 
 class PlotTool:
     def __init__(self, master):
@@ -53,9 +57,13 @@ class PlotTool:
         self.save_button = tk.Button(self.frame, text="Save CSV", command=self.save_csv)
         self.save_button.grid(row=0, column=7, padx=5, pady=5)
 
+        # 実行ボタン
+        self.run_button = tk.Button(self.frame, text="Post", command=self.run)
+        self.run_button.grid(row=0, column=8, padx=5, pady=5)
+
         # 終了ボタン
         self.quit_button = tk.Button(self.frame, text="Quit", command=self.master.quit)
-        self.quit_button.grid(row=0, column=8, padx=5, pady=5)
+        self.quit_button.grid(row=0, column=9, padx=5, pady=5)
 
         # Matplotlibの図と軸を設定
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
@@ -77,6 +85,8 @@ class PlotTool:
         self.inner_map_x, self.inner_map_y = [], []
         self.outer_map_x, self.outer_map_y = [], []
         self.texts = []  # ラベル表示用のテキスト
+        self.header = []  # CSVファイルのヘッダー
+        self.last_path = None  # 最後に選択したファイルのパス
         self.selected_point = None
         self.selected_line = None
         self.active_label = None  # アクティブなラベルの保持
@@ -127,12 +137,22 @@ class PlotTool:
                     self.z_q.append(float(row[5]))
                     self.w_q.append(float(row[6]))
                     self.labels.append(float(row[7]))
+            print(len(self.x))
         
         # 軸の範囲をデータに合わせて調整
         self.ax.set_xlim(min(self.x) - 5, max(self.x) + 5)
         self.ax.set_ylim(min(self.y) - 5, max(self.y) + 5)
         
         self.plot_data()
+    
+    def run(self):
+        # example.shを実行するPythonスクリプト
+        path = './.post/post.csv'
+        self.save_csv(path)
+        # pathを絶対パスに変換
+        path = os.path.abspath(path)
+        result = subprocess.run(['bash', 'shell.sh', path], check=True, capture_output=True, text=True)
+        print("Script output:", result.stdout)
 
     def load_map(self):
         file_path = filedialog.askopenfilename()
@@ -153,16 +173,20 @@ class PlotTool:
         self.ax.plot(self.outer_map_x, self.outer_map_y, 'b-')
         self.canvas.draw()
 
-    def save_csv(self):
+    def save_csv(self, path=None):
         self.calc_quaternion()
-        file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
+        if path is None:
+            file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
+        else:
+            file_path = path
         if not file_path:
             return
+        self.last_path = file_path
         with open(file_path, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(self.header)
-            for x, y, z, x_q, y_q, z_q, w_q, label in zip(self.x, self.y, self.z, self.x_q, self.y_q, self.z_q, self.w_q, self.labels):
-                writer.writerow([x, y, z, x_q, y_q, z_q, w_q, label])
+            for i in range(len(self.x)):
+                writer.writerow([self.x[i], self.y[i], self.z[i], self.x_q[i], self.y_q[i], self.z_q[i], self.w_q[i], self.labels[i]])
 
     def plot_data(self):
         # 現在のxlimとylimを保存
@@ -348,6 +372,10 @@ class PlotTool:
         dx, dy, dz = x1 - x0, y1 - y0, z1 - z0
         yaw = np.arctan2(dy, dx)
         q = self.quaternion_from_euler(0, 0, yaw)
+        self.x_q.append(q[0])
+        self.y_q.append(q[1])
+        self.z_q.append(q[2])
+        self.w_q.append(q[3])
 
 
     def euler_from_quaternion(self, quaternion):
