@@ -10,7 +10,7 @@ class PlotTool:
     def __init__(self, master):
         self.master = master
         self.master.title("CSV Plot Tool")
-        
+
         # CSVファイルのロードボタン
         self.load_button = tk.Button(master, text="Load CSV", command=self.load_csv)
         self.load_button.pack()
@@ -19,6 +19,11 @@ class PlotTool:
         self.show_labels_var = tk.BooleanVar(value=False)  # ラベルの表示・非表示を管理する変数
         self.show_labels_checkbutton = tk.Checkbutton(master, text="Show Labels", variable=self.show_labels_var, command=self.plot_data)
         self.show_labels_checkbutton.pack()
+
+        # 点追加のチェックボタン
+        self.add_point_var = tk.BooleanVar(value=False)  # 点追加のモードを管理する変数
+        self.add_point_checkbutton = tk.Checkbutton(master, text="Add Point", variable=self.add_point_var)
+        self.add_point_checkbutton.pack()
 
         # Matplotlibの図と軸を設定
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
@@ -97,9 +102,11 @@ class PlotTool:
         if event.button == MouseButton.MIDDLE:
             self.selected_point = self.find_nearest_point(event.xdata, event.ydata)
         elif event.button == MouseButton.RIGHT:
-            self.selected_line = self.find_nearest_line(event.xdata, event.ydata)
-            if self.selected_line is None:
-                # 左クリックで画面移動を開始
+            if self.add_point_var.get():
+                self.selected_line = self.find_nearest_line(event.xdata, event.ydata)
+            else:
+                self.selected_line = None
+                # 画面移動のために右クリックを使用
                 self.pan_active = True
                 self.pan_start = (event.xdata, event.ydata)
 
@@ -162,22 +169,44 @@ class PlotTool:
         return None
 
     def find_nearest_line(self, x, y):
+        min_distance = float('inf')
+        nearest_idx = None
+        nearest_point = None
+
         for i in range(len(self.x) - 1):
             x0, y0 = self.x[i], self.y[i]
             x1, y1 = self.x[i + 1], self.y[i + 1]
-            if self.is_near_line(x0, y0, x1, y1, x, y):
-                new_x = (x0 + x1) / 2
-                new_y = (y0 + y1) / 2
-                self.x.insert(i + 1, new_x)
-                self.y.insert(i + 1, new_y)
-                self.labels.insert(i + 1, 0.0)  # 新しい点には空のラベルを付ける
-                self.plot_data()
-                return
+            px, py = self.project_point_on_line(x0, y0, x1, y1, x, y)
+            distance = np.hypot(px - x, py - y)
+            
+            if distance < min_distance:
+                min_distance = distance
+                nearest_idx = i
+                nearest_point = (px, py)
+
+        if nearest_point is not None:
+            # 線分上の最近接点に新しい点を追加
+            self.x.insert(nearest_idx + 1, nearest_point[0])
+            self.y.insert(nearest_idx + 1, nearest_point[1])
+            self.labels.insert(nearest_idx + 1, 0.0)
+            self.plot_data()
+            return nearest_idx + 1
+        return None
+    
+    def project_point_on_line(self, x0, y0, x1, y1, x, y):
+        dx, dy = x1 - x0, y1 - y0
+        if dx == 0 and dy == 0:
+            return x0, y0
+        t = ((x - x0) * dx + (y - y0) * dy) / (dx * dx + dy * dy)
+        t = np.clip(t, 0, 1)
+        px, py = x0 + t * dx, y0 + t * dy
+        return px, py
+    
+
 
     def is_near_line(self, x0, y0, x1, y1, x, y, tol=0.1):
         d = np.abs((y1 - y0) * x - (x1 - x0) * y + x1 * y0 - y1 * x0) / np.hypot(x1 - x0, y1 - y0)
         return d < tol
-    
 
     def on_double_click(self, event):
         if event.dblclick and event.inaxes == self.ax:
@@ -186,8 +215,6 @@ class PlotTool:
                 self.active_label = point_idx  # アクティブなラベルを設定
                 self.edit_label(point_idx)     # ラベル編集
                 self.plot_data()               # ラベルを表示
-
-
 
     def edit_label(self, point_idx):
         # ポイントのラベルをダブルクリックで編集
