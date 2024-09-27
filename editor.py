@@ -11,19 +11,27 @@ class PlotTool:
         self.master = master
         self.master.title("CSV Plot Tool")
 
+        # フレームを作成してウィジェットを配置
+        self.frame = tk.Frame(master)
+        self.frame.pack()
+
         # CSVファイルのロードボタン
-        self.load_button = tk.Button(master, text="Load CSV", command=self.load_csv)
-        self.load_button.pack()
+        self.load_button = tk.Button(self.frame, text="Load CSV", command=self.load_csv)
+        self.load_button.grid(row=0, column=0, padx=5, pady=5)
+
+        # Mapのロードボタン(csvファイルを読み込んで表示)
+        self.load_map_button = tk.Button(self.frame, text="Load Map", command=self.load_map)
+        self.load_map_button.grid(row=0, column=1, padx=5, pady=5)
 
         # ラベル表示のチェックボタン
         self.show_labels_var = tk.BooleanVar(value=False)  # ラベルの表示・非表示を管理する変数
-        self.show_labels_checkbutton = tk.Checkbutton(master, text="Show Labels", variable=self.show_labels_var, command=self.plot_data)
-        self.show_labels_checkbutton.pack()
+        self.show_labels_checkbutton = tk.Checkbutton(self.frame, text="Show Labels", variable=self.show_labels_var, command=self.plot_data)
+        self.show_labels_checkbutton.grid(row=0, column=2, padx=5, pady=5)
 
         # 点追加のチェックボタン
         self.add_point_var = tk.BooleanVar(value=False)  # 点追加のモードを管理する変数
-        self.add_point_checkbutton = tk.Checkbutton(master, text="Add Point", variable=self.add_point_var)
-        self.add_point_checkbutton.pack()
+        self.add_point_checkbutton = tk.Checkbutton(self.frame, text="Add Point", variable=self.add_point_var)
+        self.add_point_checkbutton.grid(row=0, column=3, padx=5, pady=5)
 
         # Matplotlibの図と軸を設定
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
@@ -42,6 +50,8 @@ class PlotTool:
         self.cid_scroll = self.canvas.mpl_connect('scroll_event', self.on_scroll)  # スクロールイベント
 
         self.x, self.y, self.labels = [], [], []
+        self.inner_map_x, self.inner_map_y = [], []
+        self.outer_map_x, self.outer_map_y = [], []
         self.texts = []  # ラベル表示用のテキスト
         self.selected_point = None
         self.selected_line = None
@@ -70,6 +80,25 @@ class PlotTool:
         
         self.plot_data()
 
+    def load_map(self):
+        file_path = filedialog.askopenfilename()
+        if not file_path:
+            return
+        self.inner_map_x, self.inner_map_y, self.outer_map_x, self.outer_map_y = [], [], [], []
+        with open(file_path, 'r') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                if row[0]:
+                    self.inner_map_x.append(float(row[0]))
+                    self.inner_map_y.append(float(row[1]))
+                if row[2]:
+                    self.outer_map_x.append(float(row[2]))
+                    self.outer_map_y.append(float(row[3]))
+        
+        self.ax.plot(self.inner_map_x, self.inner_map_y, 'b-')
+        self.ax.plot(self.outer_map_x, self.outer_map_y, 'b-')
+        self.canvas.draw()
+
     def plot_data(self):
         # 現在のxlimとylimを保存
         xlim = self.ax.get_xlim()
@@ -78,7 +107,9 @@ class PlotTool:
         self.ax.clear()  # 現在のプロットをクリア
         self.ax.set_facecolor('white')  # 軸の背景を白色で維持
         self.ax.plot(self.x, self.y, 'o', picker=5)  # 点をプロット
-        self.ax.plot(self.x, self.y, '-')            # 点を線で接続
+        self.ax.plot(self.x, self.y, 'g-')            # 点を線で接続
+        self.ax.plot(self.inner_map_x, self.inner_map_y, 'b-')
+        self.ax.plot(self.outer_map_x, self.outer_map_y, 'b-')
 
         # 既存のテキスト（ラベル）を削除
         for text in self.texts:
