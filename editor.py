@@ -33,6 +33,10 @@ class PlotTool:
         self.add_point_checkbutton = tk.Checkbutton(self.frame, text="Add Point", variable=self.add_point_var)
         self.add_point_checkbutton.grid(row=0, column=3, padx=5, pady=5)
 
+        # CSVファイルの保存ボタン
+        self.save_button = tk.Button(self.frame, text="Save CSV", command=self.save_csv)
+        self.save_button.grid(row=0, column=4, padx=5, pady=5)
+
         # Matplotlibの図と軸を設定
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
         self.fig.patch.set_facecolor('white')  # 図の背景を白色に設定
@@ -98,6 +102,15 @@ class PlotTool:
         self.ax.plot(self.inner_map_x, self.inner_map_y, 'b-')
         self.ax.plot(self.outer_map_x, self.outer_map_y, 'b-')
         self.canvas.draw()
+
+    def save_csv(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
+        if not file_path:
+            return
+        with open(file_path, 'w', newline='') as file:
+            writer = csv.writer(file)
+            for x, y, label in zip(self.x, self.y, self.labels):
+                writer.writerow([x, y, label])
 
     def plot_data(self):
         # 現在のxlimとylimを保存
