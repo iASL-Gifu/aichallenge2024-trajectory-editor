@@ -30,12 +30,31 @@ class PlotTool:
 
         # 点追加のチェックボタン
         self.add_point_var = tk.BooleanVar(value=False)  # 点追加のモードを管理する変数
-        self.add_point_checkbutton = tk.Checkbutton(self.frame, text="Add Point", variable=self.add_point_var)
+        self.add_point_checkbutton = tk.Checkbutton(self.frame, text="Add Point", variable=self.add_point_var, command=self.set_add_point)
         self.add_point_checkbutton.grid(row=0, column=3, padx=5, pady=5)
+
+        # 点移動のチェックボタン
+        self.move_point_var = tk.BooleanVar(value=False)
+        self.move_point_checkbutton = tk.Checkbutton(self.frame, text="Move Point", variable=self.move_point_var, command=self.set_move_point)
+        self.move_point_checkbutton.grid(row=0, column=4, padx=5, pady=5)
+
+        # 点削除のチェックボタン
+        self.delete_point_var = tk.BooleanVar(value=False)
+        self.delete_point_checkbutton = tk.Checkbutton(self.frame, text="Delete Point", variable=self.delete_point_var, command=self.set_delete_point)
+        self.delete_point_checkbutton.grid(row=0, column=5, padx=5, pady=5)
+
+        # ラベル編集のチェックボタン
+        self.edit_label_var = tk.BooleanVar(value=False)
+        self.edit_label_checkbutton = tk.Checkbutton(self.frame, text="Edit Label", variable=self.edit_label_var, command=self.set_edit_label)
+        self.edit_label_checkbutton.grid(row=0, column=6, padx=5, pady=5)
 
         # CSVファイルの保存ボタン
         self.save_button = tk.Button(self.frame, text="Save CSV", command=self.save_csv)
-        self.save_button.grid(row=0, column=4, padx=5, pady=5)
+        self.save_button.grid(row=0, column=7, padx=5, pady=5)
+
+        # 終了ボタン
+        self.quit_button = tk.Button(self.frame, text="Quit", command=self.master.quit)
+        self.quit_button.grid(row=0, column=8, padx=5, pady=5)
 
         # Matplotlibの図と軸を設定
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
@@ -50,7 +69,6 @@ class PlotTool:
         self.cid_press = self.canvas.mpl_connect('button_press_event', self.on_click)
         self.cid_release = self.canvas.mpl_connect('button_release_event', self.on_release)
         self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.on_motion)
-        self.cid_dblclick = self.canvas.mpl_connect('button_press_event', self.on_double_click)
         self.cid_scroll = self.canvas.mpl_connect('scroll_event', self.on_scroll)  # スクロールイベント
 
         self.x, self.y, self.labels = [], [], []
@@ -65,6 +83,26 @@ class PlotTool:
         self.zoom_scale = 1.1
         self.pan_active = False   # パン（画面移動）状態のフラグ
         self.pan_start = None     # パンの開始位置を記録する
+
+    def set_add_point(self):
+        self.move_point_var.set(False)
+        self.edit_label_var.set(False)
+        self.delete_point_var.set(False)
+
+    def set_move_point(self):
+        self.add_point_var.set(False)
+        self.edit_label_var.set(False)
+        self.delete_point_var.set(False)
+
+    def set_edit_label(self):
+        self.add_point_var.set(False)
+        self.move_point_var.set(False)
+        self.delete_point_var.set(False)
+
+    def set_delete_point(self):
+        self.add_point_var.set(False)
+        self.move_point_var.set(False)
+        self.edit_label_var.set(False)
 
     def load_csv(self):
         file_path = filedialog.askopenfilename()
@@ -143,16 +181,26 @@ class PlotTool:
 
     def on_click(self, event):
         if event.inaxes != self.ax: return
-        if event.button == MouseButton.MIDDLE:
-            self.selected_point = self.find_nearest_point(event.xdata, event.ydata)
-        elif event.button == MouseButton.RIGHT:
-            if self.add_point_var.get():
+        if event.button == MouseButton.LEFT:
+            if self.move_point_var.get():
+                self.selected_point = self.find_nearest_point(event.xdata, event.ydata)
+            elif self.add_point_var.get():
                 self.selected_line = self.find_nearest_line(event.xdata, event.ydata)
-            else:
-                self.selected_line = None
-                # 画面移動のために右クリックを使用
-                self.pan_active = True
-                self.pan_start = (event.xdata, event.ydata)
+            elif self.delete_point_var.get():
+                point_idx = self.find_nearest_point(event.xdata, event.ydata)
+                if point_idx is not None:
+                    self.delete_point(point_idx)
+            elif self.edit_label_var.get():
+                point_idx = self.find_nearest_point(event.xdata, event.ydata)
+                if point_idx is not None:
+                    self.active_label = point_idx  # アクティブなラベルを設定
+                    self.edit_label(point_idx)     # ラベル編集
+                    self.plot_data()               # ラベルを表示
+        elif event.button == MouseButton.RIGHT:
+            self.selected_line = None
+            # 画面移動のために右クリックを使用
+            self.pan_active = True
+            self.pan_start = (event.xdata, event.ydata)
 
     def on_release(self, event):
         self.selected_point = None
@@ -252,13 +300,11 @@ class PlotTool:
         d = np.abs((y1 - y0) * x - (x1 - x0) * y + x1 * y0 - y1 * x0) / np.hypot(x1 - x0, y1 - y0)
         return d < tol
 
-    def on_double_click(self, event):
-        if event.dblclick and event.inaxes == self.ax:
-            point_idx = self.find_nearest_point(event.xdata, event.ydata)
-            if point_idx is not None:
-                self.active_label = point_idx  # アクティブなラベルを設定
-                self.edit_label(point_idx)     # ラベル編集
-                self.plot_data()               # ラベルを表示
+    def delete_point(self, point_idx):
+        self.x.pop(point_idx)
+        self.y.pop(point_idx)
+        self.labels.pop(point_idx)
+        self.plot_data()
 
     def edit_label(self, point_idx):
         # ポイントのラベルをダブルクリックで編集
