@@ -34,12 +34,18 @@ class PlotTool:
         self.cid_release = self.canvas.mpl_connect('button_release_event', self.on_release)
         self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.on_motion)
         self.cid_dblclick = self.canvas.mpl_connect('button_press_event', self.on_double_click)
+        self.cid_scroll = self.canvas.mpl_connect('scroll_event', self.on_scroll)  # スクロールイベント
 
         self.x, self.y, self.labels = [], [], []
         self.texts = []  # ラベル表示用のテキスト
         self.selected_point = None
         self.selected_line = None
         self.active_label = None  # アクティブなラベルの保持
+
+        # ズーム倍率の初期化
+        self.zoom_scale = 1.1
+        self.pan_active = False   # パン（画面移動）状態のフラグ
+        self.pan_start = None     # パンの開始位置を記録する
 
     def load_csv(self):
         file_path = filedialog.askopenfilename()
@@ -60,6 +66,10 @@ class PlotTool:
         self.plot_data()
 
     def plot_data(self):
+        # 現在のxlimとylimを保存
+        xlim = self.ax.get_xlim()
+        ylim = self.ax.get_ylim()
+
         self.ax.clear()  # 現在のプロットをクリア
         self.ax.set_facecolor('white')  # 軸の背景を白色で維持
         self.ax.plot(self.x, self.y, 'o', picker=5)  # 点をプロット
@@ -76,6 +86,10 @@ class PlotTool:
                 txt = self.ax.text(self.x[i], self.y[i], self.labels[i], fontsize=12, ha='right', color='blue')
                 self.texts.append(txt)
 
+        # 保存していたxlimとylimを再設定
+        self.ax.set_xlim(xlim)
+        self.ax.set_ylim(ylim)
+
         self.canvas.draw()  # 描画を更新
 
     def on_click(self, event):
@@ -84,24 +98,61 @@ class PlotTool:
             self.selected_point = self.find_nearest_point(event.xdata, event.ydata)
         elif event.button == MouseButton.RIGHT:
             self.selected_line = self.find_nearest_line(event.xdata, event.ydata)
-
-    def on_double_click(self, event):
-        if event.dblclick and event.inaxes == self.ax:
-            point_idx = self.find_nearest_point(event.xdata, event.ydata)
-            if point_idx is not None:
-                self.active_label = point_idx  # アクティブなラベルを設定
-                self.edit_label(point_idx)     # ラベル編集
-                self.plot_data()               # ラベルを表示
+            if self.selected_line is None:
+                # 左クリックで画面移動を開始
+                self.pan_active = True
+                self.pan_start = (event.xdata, event.ydata)
 
     def on_release(self, event):
         self.selected_point = None
         self.selected_line = None
+        self.pan_active = False  # 画面移動を終了
 
     def on_motion(self, event):
         if self.selected_point is not None and event.inaxes == self.ax:
+            # 点をドラッグして移動
             self.x[self.selected_point] = event.xdata
             self.y[self.selected_point] = event.ydata
             self.plot_data()
+        elif self.pan_active and event.inaxes == self.ax:
+            # 画面移動（パン）機能
+            dx = self.pan_start[0] - event.xdata
+            dy = self.pan_start[1] - event.ydata
+
+            # 現在の軸範囲を取得して、ドラッグ量に基づいて新しい範囲を設定
+            xlim = self.ax.get_xlim()
+            ylim = self.ax.get_ylim()
+
+            self.ax.set_xlim(xlim[0] + dx, xlim[1] + dx)
+            self.ax.set_ylim(ylim[0] + dy, ylim[1] + dy)
+
+            self.canvas.draw()  # 描画を更新
+
+    def on_scroll(self, event):
+        # スクロールイベントでズームイン/ズームアウト
+        xlim = self.ax.get_xlim()
+        ylim = self.ax.get_ylim()
+
+        # ズームの中心はマウスの位置
+        xdata, ydata = event.xdata, event.ydata
+
+        if event.button == 'up':  # ズームイン
+            scale_factor = self.zoom_scale
+        elif event.button == 'down':  # ズームアウト
+            scale_factor = 1 / self.zoom_scale
+        else:
+            return
+
+        # 新しい範囲を計算
+        new_xlim = [(x - xdata) * scale_factor + xdata for x in xlim]
+        new_ylim = [(y - ydata) * scale_factor + ydata for y in ylim]
+
+        # 新しい範囲をセット
+        self.ax.set_xlim(new_xlim)
+        self.ax.set_ylim(new_ylim)
+
+        # 再描画
+        self.canvas.draw()
 
     def find_nearest_point(self, x, y):
         distances = np.hypot(np.array(self.x) - x, np.array(self.y) - y)
@@ -119,13 +170,24 @@ class PlotTool:
                 new_y = (y0 + y1) / 2
                 self.x.insert(i + 1, new_x)
                 self.y.insert(i + 1, new_y)
-                self.labels.insert(i + 1, '')  # 新しい点には空のラベルを付ける
+                self.labels.insert(i + 1, 0.0)  # 新しい点には空のラベルを付ける
                 self.plot_data()
                 return
 
-    def is_near_line(self, x0, y0, x1, y1, x, y, tol=0.5):
+    def is_near_line(self, x0, y0, x1, y1, x, y, tol=0.1):
         d = np.abs((y1 - y0) * x - (x1 - x0) * y + x1 * y0 - y1 * x0) / np.hypot(x1 - x0, y1 - y0)
         return d < tol
+    
+
+    def on_double_click(self, event):
+        if event.dblclick and event.inaxes == self.ax:
+            point_idx = self.find_nearest_point(event.xdata, event.ydata)
+            if point_idx is not None:
+                self.active_label = point_idx  # アクティブなラベルを設定
+                self.edit_label(point_idx)     # ラベル編集
+                self.plot_data()               # ラベルを表示
+
+
 
     def edit_label(self, point_idx):
         # ポイントのラベルをダブルクリックで編集
