@@ -1,4 +1,5 @@
 import csv
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -72,6 +73,7 @@ class PlotTool:
         self.cid_scroll = self.canvas.mpl_connect('scroll_event', self.on_scroll)  # スクロールイベント
 
         self.x, self.y, self.labels = [], [], []
+        self.z, self.x_q, self.y_q, self.z_q, self.w_q = [], [], [], [], []
         self.inner_map_x, self.inner_map_y = [], []
         self.outer_map_x, self.outer_map_y = [], []
         self.texts = []  # ラベル表示用のテキスト
@@ -111,10 +113,20 @@ class PlotTool:
         self.x, self.y, self.labels = [], [], []
         with open(file_path, 'r') as file:
             reader = csv.reader(file)
+            i = 0
             for row in reader:
-                self.x.append(float(row[0]))
-                self.y.append(float(row[1]))
-                self.labels.append(row[2])  # 3列目のデータをラベルとして保持
+                if i == 0:
+                    i += 1
+                    self.header = row
+                else:
+                    self.x.append(float(row[0]))
+                    self.y.append(float(row[1]))
+                    self.z.append(float(row[2]))
+                    self.x_q.append(float(row[3]))
+                    self.y_q.append(float(row[4]))
+                    self.z_q.append(float(row[5]))
+                    self.w_q.append(float(row[6]))
+                    self.labels.append(float(row[7]))
         
         # 軸の範囲をデータに合わせて調整
         self.ax.set_xlim(min(self.x) - 5, max(self.x) + 5)
@@ -142,13 +154,15 @@ class PlotTool:
         self.canvas.draw()
 
     def save_csv(self):
+        self.calc_quaternion()
         file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
         if not file_path:
             return
         with open(file_path, 'w', newline='') as file:
             writer = csv.writer(file)
-            for x, y, label in zip(self.x, self.y, self.labels):
-                writer.writerow([x, y, label])
+            writer.writerow(self.header)
+            for x, y, z, x_q, y_q, z_q, w_q, label in zip(self.x, self.y, self.z, self.x_q, self.y_q, self.z_q, self.w_q, self.labels):
+                writer.writerow([x, y, z, x_q, y_q, z_q, w_q, label])
 
     def plot_data(self):
         # 現在のxlimとylimを保存
@@ -312,6 +326,75 @@ class PlotTool:
         if new_label is not None:
             self.labels[point_idx] = new_label
             self.plot_data()
+
+    def calc_quaternion(self):
+        # すべての点において、次の点を使ってクォータニオンを計算(yawのみ)
+        self.x_q.clear()
+        self.y_q.clear()
+        self.z_q.clear()
+        self.w_q.clear()
+        for i in range(len(self.x) - 1):
+            x0, y0, z0 = self.x[i], self.y[i], self.z[i]
+            x1, y1, z1 = self.x[i + 1], self.y[i + 1], self.z[i + 1]
+            dx, dy, dz = x1 - x0, y1 - y0, z1 - z0
+            yaw = np.arctan2(dy, dx)
+            q = self.quaternion_from_euler(0, 0, yaw)
+            self.x_q.append(q[0])
+            self.y_q.append(q[1])
+            self.z_q.append(q[2])
+            self.w_q.append(q[3])
+        x0, y0, z0 = self.x[-1], self.y[-1], self.z[-1]
+        x1, y1, z1 = self.x[0], self.y[0], self.z[0]
+        dx, dy, dz = x1 - x0, y1 - y0, z1 - z0
+        yaw = np.arctan2(dy, dx)
+        q = self.quaternion_from_euler(0, 0, yaw)
+
+
+    def euler_from_quaternion(self, quaternion):
+        """
+        Converts quaternion (w in last place) to euler roll, pitch, yaw
+        quaternion = [x, y, z, w]
+        Bellow should be replaced when porting for ROS 2 Python tf_conversions is done.
+        """
+        x = quaternion.x
+        y = quaternion.y
+        z = quaternion.z
+        w = quaternion.w
+
+        sinr_cosp = 2 * (w * x + y * z)
+        cosr_cosp = 1 - 2 * (x * x + y * y)
+        roll = np.arctan2(sinr_cosp, cosr_cosp)
+
+        sinp = 2 * (w * y - z * x)
+        pitch = np.arcsin(sinp)
+
+        siny_cosp = 2 * (w * z + x * y)
+        cosy_cosp = 1 - 2 * (y * y + z * z)
+        yaw = np.arctan2(siny_cosp, cosy_cosp)
+
+        return roll, pitch, yaw
+
+    def quaternion_from_euler(self, roll, pitch, yaw):
+        """
+        Converts euler roll, pitch, yaw to quaternion (w in last place)
+        quat = [x, y, z, w]
+        Bellow should be replaced when porting for ROS 2 Python tf_conversions is done.
+        """
+        cy = math.cos(yaw * 0.5)
+        sy = math.sin(yaw * 0.5)
+        cp = math.cos(pitch * 0.5)
+        sp = math.sin(pitch * 0.5)
+        cr = math.cos(roll * 0.5)
+        sr = math.sin(roll * 0.5)
+
+        q = [0] * 4
+        q[0] = cy * cp * cr + sy * sp * sr
+        q[1] = cy * cp * sr - sy * sp * cr
+        q[2] = sy * cp * sr + cy * sp * cr
+        q[3] = sy * cp * cr - cy * sp * sr
+
+        return q
+
 
 if __name__ == "__main__":
     root = tk.Tk()
