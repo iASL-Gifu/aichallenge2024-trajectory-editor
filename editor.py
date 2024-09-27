@@ -21,11 +21,11 @@ class PlotTool:
         self.frame.pack()
 
         # CSVファイルのロードボタン
-        self.load_button = tk.Button(self.frame, text="Load CSV", command=self.load_csv)
+        self.load_button = tk.Button(self.frame, text="Load trj", command=self.load_csv)
         self.load_button.grid(row=0, column=0, padx=5, pady=5)
 
         # Mapのロードボタン(csvファイルを読み込んで表示)
-        self.load_map_button = tk.Button(self.frame, text="Load Map", command=self.load_map)
+        self.load_map_button = tk.Button(self.frame, text="Load lane", command=self.load_map)
         self.load_map_button.grid(row=0, column=1, padx=5, pady=5)
 
         # ラベル表示のチェックボタン
@@ -151,8 +151,10 @@ class PlotTool:
         self.save_csv(path)
         # pathを絶対パスに変換
         path = os.path.abspath(path)
-        result = subprocess.run(['bash', 'shell.sh', path], check=True, capture_output=True, text=True)
-        print("Script output:", result.stdout)
+        try:
+            result = subprocess.run(['bash', 'shell.sh', path], check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e.stderr}")
 
     def load_map(self):
         file_path = filedialog.askopenfilename()
