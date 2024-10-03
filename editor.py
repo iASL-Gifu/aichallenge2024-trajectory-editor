@@ -298,9 +298,9 @@ class PlotTool:
                     end = self.find_nearest_point(event.xdata, event.ydata)
                     if end is not None:
                         # その区間に一律の値を入れる
-                        new_label = float(tk.simpledialog.askstring("Edit Label", f"Edit label for points {self.edit_labels_start} to {end}", initialvalue=self.labels[self.edit_labels_start]))
-                        new_label = self.kmh_to_ms(new_label)
+                        new_label = tk.simpledialog.askstring("Edit Label", f"Edit label for points {self.edit_labels_start} to {end}", initialvalue=self.ms_to_kmh(self.labels[self.edit_labels_start]))
                         if new_label is not None:
+                            new_label = self.kmh_to_ms(float(new_label))
                             trj_length = len(self.x)
                             index_length = end - self.edit_labels_start
                             step = 1 if index_length > 0 else -1
