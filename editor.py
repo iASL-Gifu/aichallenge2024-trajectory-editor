@@ -50,20 +50,51 @@ class PlotTool:
 
         # ラベル編集のチェックボタン
         self.edit_label_var = tk.BooleanVar(value=False)
-        self.edit_label_checkbutton = tk.Checkbutton(self.frame, text="Edit Label", variable=self.edit_label_var, command=self.set_edit_label)
+        self.edit_label_checkbutton = tk.Checkbutton(self.frame, text="Edit a Label", variable=self.edit_label_var, command=self.set_edit_label)
         self.edit_label_checkbutton.grid(row=0, column=6, padx=5, pady=5)
+
+        # ラベル一括編集のチェックボタン
+        self.calculate_speed_var = tk.BooleanVar(value=False)
+        self.calculate_speed_checkbutton = tk.Checkbutton(self.frame, text="Edit Labels", variable=self.calculate_speed_var, command=self.set_edit_labels)
+        self.calculate_speed_checkbutton.grid(row=0, column=7, padx=5, pady=5)
 
         # CSVファイルの保存ボタン
         self.save_button = tk.Button(self.frame, text="Save CSV", command=self.save_csv)
-        self.save_button.grid(row=0, column=7, padx=5, pady=5)
+        self.save_button.grid(row=0, column=8, padx=5, pady=5)
 
         # 実行ボタン
         self.run_button = tk.Button(self.frame, text="Post", command=self.run)
-        self.run_button.grid(row=0, column=8, padx=5, pady=5)
+        self.run_button.grid(row=0, column=9, padx=5, pady=5)
 
         # 終了ボタン
         self.quit_button = tk.Button(self.frame, text="Quit", command=self.master.quit)
-        self.quit_button.grid(row=0, column=9, padx=5, pady=5)
+        self.quit_button.grid(row=0, column=10, padx=5, pady=5)
+
+        # オプションメニュー
+        self.options_frame = tk.Frame(master)
+        self.options_frame.pack()
+
+        # 初期ラベル値の設定
+        self.initial_label_value = tk.DoubleVar(value=0.0)
+        tk.Label(self.options_frame, text="Initial Label Value:").grid(row=0, column=0, padx=5, pady=5)
+        self.initial_label_entry = tk.Entry(self.options_frame, textvariable=self.initial_label_value)
+        self.initial_label_entry.grid(row=0, column=1, padx=5, pady=5)
+
+        # 色変更オフセット値の設定
+        self.low_offset_value = tk.DoubleVar(value=10.0)
+        tk.Label(self.options_frame, text="Low Color Value:").grid(row=1, column=0, padx=5, pady=5)
+        self.color_offset_entry = tk.Entry(self.options_frame, textvariable=self.low_offset_value)
+        self.color_offset_entry.grid(row=1, column=1, padx=5, pady=5)
+
+        self.high_offset_value = tk.DoubleVar(value=30.0)
+        tk.Label(self.options_frame, text="High Color Value:").grid(row=2, column=0, padx=5, pady=5)
+        self.color_offset_entry = tk.Entry(self.options_frame, textvariable=self.high_offset_value)
+        self.color_offset_entry.grid(row=2, column=1, padx=5, pady=5)
+
+        # 変数の変更を監視
+        self.initial_label_value.trace("w", self.on_option_change)
+        self.low_offset_value.trace("w", self.on_option_change)
+        self.high_offset_value.trace("w", self.on_option_change)
 
         # Matplotlibの図と軸を設定
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
@@ -90,6 +121,7 @@ class PlotTool:
         self.selected_point = None
         self.selected_line = None
         self.active_label = None  # アクティブなラベルの保持
+        self.edit_labels_start = None  # 一括編集の開始点の保持
 
         # ズーム倍率の初期化
         self.zoom_scale = 1.1
@@ -100,21 +132,34 @@ class PlotTool:
         self.move_point_var.set(False)
         self.edit_label_var.set(False)
         self.delete_point_var.set(False)
+        self.calculate_speed_var.set(False)
 
     def set_move_point(self):
         self.add_point_var.set(False)
         self.edit_label_var.set(False)
         self.delete_point_var.set(False)
+        self.calculate_speed_var.set(False)
 
     def set_edit_label(self):
         self.add_point_var.set(False)
         self.move_point_var.set(False)
         self.delete_point_var.set(False)
+        self.calculate_speed_var.set(False)
 
     def set_delete_point(self):
         self.add_point_var.set(False)
         self.move_point_var.set(False)
         self.edit_label_var.set(False)
+        self.calculate_speed_var.set(False)
+
+    def set_edit_labels(self):
+        self.add_point_var.set(False)
+        self.move_point_var.set(False)
+        self.edit_label_var.set(False)
+        self.delete_point_var.set(False)
+
+    def on_option_change(self, *args):
+        self.plot_data()
 
     def load_csv(self):
         file_path = filedialog.askopenfilename()
@@ -197,20 +242,21 @@ class PlotTool:
 
         self.ax.clear()  # 現在のプロットをクリア
         self.ax.set_facecolor('white')  # 軸の背景を白色で維持
-        self.ax.plot(self.x, self.y, 'o', picker=5)  # 点をプロット
-        self.ax.plot(self.x, self.y, 'g-')            # 点を線で接続
-        self.ax.plot(self.inner_map_x, self.inner_map_y, 'b-')
-        self.ax.plot(self.outer_map_x, self.outer_map_y, 'b-')
 
-        # 既存のテキスト（ラベル）を削除
-        for text in self.texts:
-            text.remove()
-        self.texts = []
+        # 点をプロット
+        for i in range(len(self.x)):
+            color = self.get_color(self.labels[i])
+            self.ax.plot(self.x[i], self.y[i], 'o', color=color, picker=5)
+
+        # 線をプロット
+        for i in range(len(self.x) - 1):
+            color = self.get_color(self.labels[i + 1])
+            self.ax.plot(self.x[i:i + 2], self.y[i:i + 2], color=color)
 
         # チェックボタンの状態に応じてラベルを表示
         if self.show_labels_var.get():
             for i in range(len(self.x)):
-                txt = self.ax.text(self.x[i], self.y[i], self.labels[i], fontsize=12, ha='right', color='blue')
+                txt = self.ax.text(self.x[i], self.y[i], str(self.ms_to_kmh(self.labels[i])), fontsize=12, ha='right', color='blue')
                 self.texts.append(txt)
 
         # 保存していたxlimとylimを再設定
@@ -218,6 +264,14 @@ class PlotTool:
         self.ax.set_ylim(ylim)
 
         self.canvas.draw()  # 描画を更新
+
+    def get_color(self, label):
+        if label > self.kmh_to_ms(self.high_offset_value.get()):
+            return 'green'
+        elif label > self.kmh_to_ms(self.low_offset_value.get()):
+            return 'yellow'
+        else:
+            return 'red'
 
     def on_click(self, event):
         if event.inaxes != self.ax: return
@@ -236,6 +290,39 @@ class PlotTool:
                     self.active_label = point_idx  # アクティブなラベルを設定
                     self.edit_label(point_idx)     # ラベル編集
                     self.plot_data()               # ラベルを表示
+            elif self.calculate_speed_var.get():
+                # 二点選択してそれぞれのindexを取得
+                if self.edit_labels_start is None:
+                    self.edit_labels_start = self.find_nearest_point(event.xdata, event.ydata)
+                else:
+                    end = self.find_nearest_point(event.xdata, event.ydata)
+                    if end is not None:
+                        # その区間に一律の値を入れる
+                        new_label = tk.simpledialog.askstring("Edit Label", f"Edit label for points {self.edit_labels_start} to {end}", initialvalue=self.ms_to_kmh(self.labels[self.edit_labels_start]))
+                        if new_label is not None:
+                            new_label = self.kmh_to_ms(float(new_label))
+                            trj_length = len(self.x)
+                            index_length = end - self.edit_labels_start
+                            step = 1 if index_length > 0 else -1
+                            if step < 0 and trj_length-self.edit_labels_start+end+1 < trj_length/2:
+                                step = 1
+                                for i in range(self.edit_labels_start, trj_length):
+                                    self.labels[i] = new_label
+                                for i in range(end+1):
+                                    self.labels[i] = new_label
+                            elif step > 0 and index_length > trj_length/2:
+                                step = -1
+                                for i in range(self.edit_labels_start, -1, step):
+                                    self.labels[i] = new_label
+                                for i in range(trj_length-1, end-1, step):
+                                    self.labels[i] = new_label
+                            else:
+                                for i in range(self.edit_labels_start, end+step, step):
+                                    self.labels[i] = new_label
+                            self.plot_data()
+                            self.edit_labels_start = None
+
+
         elif event.button == MouseButton.RIGHT:
             self.selected_line = None
             # 画面移動のために右クリックを使用
@@ -320,7 +407,7 @@ class PlotTool:
             # 線分上の最近接点に新しい点を追加
             self.x.insert(nearest_idx + 1, nearest_point[0])
             self.y.insert(nearest_idx + 1, nearest_point[1])
-            self.labels.insert(nearest_idx + 1, 0.0)
+            self.labels.insert(nearest_idx + 1, self.kmh_to_ms(self.initial_label_value.get()))
             self.plot_data()
             return nearest_idx + 1
         return None
@@ -350,7 +437,7 @@ class PlotTool:
         # ポイントのラベルをダブルクリックで編集
         new_label = tk.simpledialog.askstring("Edit Label", f"Edit label for point {point_idx}", initialvalue=self.labels[point_idx])
         if new_label is not None:
-            self.labels[point_idx] = new_label
+            self.labels[point_idx] = self.kmh_to_ms(float(new_label))
             self.plot_data()
 
     def calc_quaternion(self):
@@ -378,6 +465,13 @@ class PlotTool:
         self.y_q.append(q[1])
         self.z_q.append(q[2])
         self.w_q.append(q[3])
+
+
+    def ms_to_kmh(self, ms):
+        return ms * 3.6
+    
+    def kmh_to_ms(self, kmh):
+        return kmh / 3.6
 
 
     def euler_from_quaternion(self, quaternion):
