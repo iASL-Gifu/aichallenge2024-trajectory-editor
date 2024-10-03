@@ -50,20 +50,25 @@ class PlotTool:
 
         # ラベル編集のチェックボタン
         self.edit_label_var = tk.BooleanVar(value=False)
-        self.edit_label_checkbutton = tk.Checkbutton(self.frame, text="Edit Label", variable=self.edit_label_var, command=self.set_edit_label)
+        self.edit_label_checkbutton = tk.Checkbutton(self.frame, text="Edit a Label", variable=self.edit_label_var, command=self.set_edit_label)
         self.edit_label_checkbutton.grid(row=0, column=6, padx=5, pady=5)
+
+        # ラベル一括編集のチェックボタン
+        self.calculate_speed_var = tk.BooleanVar(value=False)
+        self.calculate_speed_checkbutton = tk.Checkbutton(self.frame, text="Edit Labels", variable=self.calculate_speed_var, command=self.set_edit_labels)
+        self.calculate_speed_checkbutton.grid(row=0, column=7, padx=5, pady=5)
 
         # CSVファイルの保存ボタン
         self.save_button = tk.Button(self.frame, text="Save CSV", command=self.save_csv)
-        self.save_button.grid(row=0, column=7, padx=5, pady=5)
+        self.save_button.grid(row=0, column=8, padx=5, pady=5)
 
         # 実行ボタン
         self.run_button = tk.Button(self.frame, text="Post", command=self.run)
-        self.run_button.grid(row=0, column=8, padx=5, pady=5)
+        self.run_button.grid(row=0, column=9, padx=5, pady=5)
 
         # 終了ボタン
         self.quit_button = tk.Button(self.frame, text="Quit", command=self.master.quit)
-        self.quit_button.grid(row=0, column=9, padx=5, pady=5)
+        self.quit_button.grid(row=0, column=10, padx=5, pady=5)
 
         # Matplotlibの図と軸を設定
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
@@ -90,6 +95,7 @@ class PlotTool:
         self.selected_point = None
         self.selected_line = None
         self.active_label = None  # アクティブなラベルの保持
+        self.edit_labels_start = None  # 一括編集の開始点の保持
 
         # ズーム倍率の初期化
         self.zoom_scale = 1.1
@@ -100,21 +106,31 @@ class PlotTool:
         self.move_point_var.set(False)
         self.edit_label_var.set(False)
         self.delete_point_var.set(False)
+        self.calculate_speed_var.set(False)
 
     def set_move_point(self):
         self.add_point_var.set(False)
         self.edit_label_var.set(False)
         self.delete_point_var.set(False)
+        self.calculate_speed_var.set(False)
 
     def set_edit_label(self):
         self.add_point_var.set(False)
         self.move_point_var.set(False)
         self.delete_point_var.set(False)
+        self.calculate_speed_var.set(False)
 
     def set_delete_point(self):
         self.add_point_var.set(False)
         self.move_point_var.set(False)
         self.edit_label_var.set(False)
+        self.calculate_speed_var.set(False)
+
+    def set_edit_labels(self):
+        self.add_point_var.set(False)
+        self.move_point_var.set(False)
+        self.edit_label_var.set(False)
+        self.delete_point_var.set(False)
 
     def load_csv(self):
         file_path = filedialog.askopenfilename()
@@ -236,6 +252,40 @@ class PlotTool:
                     self.active_label = point_idx  # アクティブなラベルを設定
                     self.edit_label(point_idx)     # ラベル編集
                     self.plot_data()               # ラベルを表示
+            elif self.calculate_speed_var.get():
+                # 二点選択してそれぞれのindexを取得
+                if self.edit_labels_start is None:
+                    self.edit_labels_start = self.find_nearest_point(event.xdata, event.ydata)
+                else:
+                    end = self.find_nearest_point(event.xdata, event.ydata)
+                    if end is not None:
+                        # その区間に一律の値を入れる
+                        new_label = tk.simpledialog.askstring("Edit Label", f"Edit label for points {self.edit_labels_start} to {end}", initialvalue=self.labels[self.edit_labels_start])
+                        if new_label is not None:
+                            trj_length = len(self.x)
+                            index_length = end - self.edit_labels_start
+                            step = 1 if index_length > 0 else -1
+                            print(trj_length-self.edit_labels_start+end+1)
+                            print(trj_length, self.edit_labels_start, end)
+                            if step < 0 and trj_length-self.edit_labels_start+end+1 < trj_length/2:
+                                step = 1
+                                for i in range(self.edit_labels_start, trj_length):
+                                    self.labels[i] = new_label
+                                for i in range(end+1):
+                                    self.labels[i] = new_label
+                            elif step > 0 and index_length > trj_length/2:
+                                step = -1
+                                for i in range(self.edit_labels_start, -1, step):
+                                    self.labels[i] = new_label
+                                for i in range(trj_length-1, end-1, step):
+                                    self.labels[i] = new_label
+                            else:
+                                for i in range(self.edit_labels_start, end+step, step):
+                                    self.labels[i] = new_label
+                            self.plot_data()
+                            self.edit_labels_start = None
+
+
         elif event.button == MouseButton.RIGHT:
             self.selected_line = None
             # 画面移動のために右クリックを使用
