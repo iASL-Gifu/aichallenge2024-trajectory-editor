@@ -260,6 +260,11 @@ class PlotTool:
                 txt = self.ax.text(self.x[i], self.y[i], str(self.ms_to_kmh(self.labels[i])), fontsize=12, ha='right', color='blue')
                 self.texts.append(txt)
 
+        # マップをプロット
+        if self.inner_map_x:
+            self.ax.plot(self.inner_map_x, self.inner_map_y, 'b-')
+            self.ax.plot(self.outer_map_x, self.outer_map_y, 'b-')
+
         # 保存していたxlimとylimを再設定
         self.ax.set_xlim(xlim)
         self.ax.set_ylim(ylim)
