@@ -128,6 +128,9 @@ class PlotTool:
         self.pan_active = False   # パン（画面移動）状態のフラグ
         self.pan_start = None     # パンの開始位置を記録する
 
+        # このpythonスクリプトのディレクトリを取得
+        self.script_dir = os.path.dirname(os.path.abspath(__file__))
+
     def set_add_point(self):
         self.move_point_var.set(False)
         self.edit_label_var.set(False)
@@ -192,12 +195,10 @@ class PlotTool:
     
     def run(self):
         # example.shを実行するPythonスクリプト
-        path = './.post/post.csv'
+        path = self.script_dir + '/.post/post.csv'
         self.save_csv(path)
-        # pathを絶対パスに変換
-        path = os.path.abspath(path)
         try:
-            result = subprocess.run(['bash', 'shell.sh', path], check=True, capture_output=True, text=True)
+            result = subprocess.run(['bash', self.script_dir + '/shell.sh', path], check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
             print(f"Error: {e.stderr}")
 
