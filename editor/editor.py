@@ -70,6 +70,11 @@ class PlotTool:
         self.quit_button = tk.Button(self.frame, text="Quit", command=self.master.quit)
         self.quit_button.grid(row=0, column=10, padx=5, pady=5)
 
+        # ダークモードのチェックボックス
+        self.dark_mode_var = tk.BooleanVar(value=False)  # ダークモードを管理する変数
+        self.dark_mode_checkbutton = tk.Checkbutton(self.frame, text="Dark Mode", variable=self.dark_mode_var, command=self.toggle_dark_mode)
+        self.dark_mode_checkbutton.grid(row=0, column=11, padx=5, pady=5)
+
         # オプションメニュー
         self.options_frame = tk.Frame(master)
         self.options_frame.pack()
@@ -164,6 +169,23 @@ class PlotTool:
     def on_option_change(self, *args):
         self.plot_data()
 
+    def toggle_dark_mode(self):
+        """ダークモードのオンオフを切り替える関数"""
+        if self.dark_mode_var.get():
+            self.fig.patch.set_facecolor('black')  # 図の背景を黒に
+            self.ax.set_facecolor('black')         # 軸の背景を黒に
+            self.ax.tick_params(colors='white')    # 軸の目盛りを白に
+            for label in self.ax.get_xticklabels() + self.ax.get_yticklabels():
+                label.set_color('white')           # 軸ラベルの色を白に
+        else:
+            self.fig.patch.set_facecolor('white')  # 図の背景を白に戻す
+            self.ax.set_facecolor('white')         # 軸の背景を白に戻す
+            self.ax.tick_params(colors='black')    # 軸の目盛りを黒に戻す
+            for label in self.ax.get_xticklabels() + self.ax.get_yticklabels():
+                label.set_color('black')           # 軸ラベルの色を黒に戻す
+
+        self.plot_data()  # グラフを再描画
+
     def load_csv(self):
         file_path = filedialog.askopenfilename()
         if not file_path:
@@ -242,7 +264,14 @@ class PlotTool:
         ylim = self.ax.get_ylim()
 
         self.ax.clear()  # 現在のプロットをクリア
-        self.ax.set_facecolor('white')  # 軸の背景を白色で維持
+
+        # ダークモードかどうかで背景色を変更
+        if self.dark_mode_var.get():
+            self.ax.set_facecolor('black')  # 軸の背景を黒に設定
+            label_color = 'white'           # ラベルの色を白に
+        else:
+            self.ax.set_facecolor('white')  # 軸の背景を白に設定
+            label_color = 'blue'            # ラベルの色を青に戻す
 
         # 点をプロット
         for i in range(len(self.x)):
@@ -257,7 +286,7 @@ class PlotTool:
         # チェックボタンの状態に応じてラベルを表示
         if self.show_labels_var.get():
             for i in range(len(self.x)):
-                txt = self.ax.text(self.x[i], self.y[i], str(self.ms_to_kmh(self.labels[i])), fontsize=12, ha='right', color='blue')
+                txt = self.ax.text(self.x[i], self.y[i], str(self.ms_to_kmh(self.labels[i])), fontsize=12, ha='right', color=label_color)
                 self.texts.append(txt)
 
         # マップをプロット
