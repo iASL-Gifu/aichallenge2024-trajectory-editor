@@ -105,6 +105,7 @@ class PlotTool:
 
         # Matplotlibの図と軸を設定
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
+        self.fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
         self.fig.patch.set_facecolor('white')  # 図の背景を白色に設定
         self.ax.set_facecolor('white')         # 軸の背景を白色に設定
 
