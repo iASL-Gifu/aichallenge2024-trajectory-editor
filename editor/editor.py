@@ -556,9 +556,17 @@ class PlotTool:
 
     def get_points_in_range(self, start_idx, end_idx):
         # start_idxとend_idxの範囲内の点インデックスを取得
-        if start_idx > end_idx:
-            start_idx, end_idx = end_idx, start_idx
-        return list(range(start_idx, end_idx + 1))
+        index_length = end_idx - start_idx
+        step = 1 if index_length > 0 else -1
+        trj_length = len(self.x)
+        if step < 0 and trj_length-start_idx+end_idx+1 < trj_length/2:
+            step = 1
+            return list(range(start_idx, trj_length)) + list(range(end_idx+1))
+        elif step > 0 and index_length > trj_length/2:
+            step = -1
+            return list(range(start_idx, -1, step)) + list(range(trj_length-1, end_idx-1, step))
+        else:
+            return list(range(start_idx, end_idx+step, step))
 
 
     def ms_to_kmh(self, ms):
