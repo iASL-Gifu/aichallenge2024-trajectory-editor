@@ -293,7 +293,7 @@ class PlotTool:
         # チェックボタンの状態に応じてラベルを表示
         if self.show_labels_var.get():
             for i in range(len(self.x)):
-                txt = self.ax.text(self.x[i], self.y[i], str(self.ms_to_kmh(self.labels[i])), fontsize=12, ha='right', color=label_color)
+                txt = self.ax.text(self.x[i], self.y[i], str(int(self.ms_to_kmh(self.labels[i]))), fontsize=12, ha='right', color=label_color)
                 self.texts.append(txt)
 
         # マップをプロット
