@@ -433,8 +433,8 @@ class PlotTool:
             self.canvas.draw()  # 描画を更新
         elif self.dragging_range and self.selected_range_points and event.inaxes == self.ax:
             # 選択範囲の点をすべて平行移動
-            dx = event.xdata - self.x[self.selected_range_points[0]]
-            dy = event.ydata - self.y[self.selected_range_points[0]]
+            dx = event.xdata - self.x[self.selected_range_points[-1]]
+            dy = event.ydata - self.y[self.selected_range_points[-1]]
 
             for idx in self.selected_range_points:
                 self.x[idx] += dx
