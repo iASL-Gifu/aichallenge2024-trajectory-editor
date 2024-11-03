@@ -84,6 +84,8 @@ class PlotTool:
         tk.Label(self.options_frame, text="Initial Label Value:").grid(row=0, column=0, padx=5, pady=5)
         self.initial_label_entry = tk.Entry(self.options_frame, textvariable=self.initial_label_value)
         self.initial_label_entry.grid(row=0, column=1, padx=5, pady=5)
+        self.reset_button = tk.Button(self.options_frame, text="reset view", command=self.reset_view)
+        self.reset_button.grid(row=0, column=2, padx=5, pady=5)
 
         # 色変更オフセット値の設定
         self.low_offset_value = tk.DoubleVar(value=10.0)
@@ -92,9 +94,9 @@ class PlotTool:
         self.color_offset_entry.grid(row=1, column=1, padx=5, pady=5)
 
         self.high_offset_value = tk.DoubleVar(value=30.0)
-        tk.Label(self.options_frame, text="High Color Value:").grid(row=2, column=0, padx=5, pady=5)
+        tk.Label(self.options_frame, text="High Color Value:").grid(row=1, column=2, padx=5, pady=5)
         self.color_offset_entry = tk.Entry(self.options_frame, textvariable=self.high_offset_value)
-        self.color_offset_entry.grid(row=2, column=1, padx=5, pady=5)
+        self.color_offset_entry.grid(row=1, column=3, padx=5, pady=5)
 
         # 変数の変更を監視
         self.initial_label_value.trace("w", self.on_option_change)
@@ -108,7 +110,7 @@ class PlotTool:
 
         # Matplotlibの図をTkinterに埋め込む
         self.canvas = FigureCanvasTkAgg(self.fig, master=master)
-        self.canvas.get_tk_widget().pack()
+        self.canvas.get_tk_widget().pack(expand=True, fill='both')
 
         # イベントハンドラの設定
         self.cid_press = self.canvas.mpl_connect('button_press_event', self.on_click)
@@ -213,6 +215,11 @@ class PlotTool:
         self.ax.set_xlim(min(self.x) - 5, max(self.x) + 5)
         self.ax.set_ylim(min(self.y) - 5, max(self.y) + 5)
         
+        self.plot_data()
+
+    def reset_view(self):
+        self.ax.set_xlim(min(self.x) - 5, max(self.x) + 5)
+        self.ax.set_ylim(min(self.y) - 5, max(self.y) + 5)
         self.plot_data()
     
     def run(self):
