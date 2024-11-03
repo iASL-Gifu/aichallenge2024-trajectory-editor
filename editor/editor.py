@@ -75,6 +75,10 @@ class PlotTool:
         self.dark_mode_checkbutton = tk.Checkbutton(self.frame, text="Dark Mode", variable=self.dark_mode_var, command=self.toggle_dark_mode)
         self.dark_mode_checkbutton.grid(row=0, column=11, padx=5, pady=5)
 
+        self.move_selected_var = tk.BooleanVar(value=False)
+        self.move_selected_checkbutton = tk.Checkbutton(self.frame, text="Move Selected Points", variable=self.move_selected_var)
+        self.move_selected_checkbutton.grid(row=0, column=12, padx=5, pady=5)
+
         # オプションメニュー
         self.options_frame = tk.Frame(master)
         self.options_frame.pack()
@@ -134,6 +138,14 @@ class PlotTool:
         self.zoom_scale = 1.1
         self.pan_active = False   # パン（画面移動）状態のフラグ
         self.pan_start = None     # パンの開始位置を記録する
+
+        self.selected_range_start = None
+        self.selected_range_end = None
+        self.selected_range_points = []  # 選択された範囲の点リスト
+        self.dragging_range = False  # 範囲内ドラッグ状態の管理
+
+        self.selected_range_start = None
+        self.selected_range_end = None
 
         # このpythonスクリプトのディレクトリを取得
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -282,7 +294,7 @@ class PlotTool:
 
         # 点をプロット
         for i in range(len(self.x)):
-            color = self.get_color(self.labels[i])
+            color = self.get_color(self.labels[i], i)
             self.ax.plot(self.x[i], self.y[i], 'o', color=color, picker=5)
 
         # 線をプロット
@@ -307,7 +319,10 @@ class PlotTool:
 
         self.canvas.draw()  # 描画を更新
 
-    def get_color(self, label):
+    def get_color(self, label, index=None):
+        if self.selected_range_start and index or self.selected_range_end and index:
+            if index == self.selected_range_start or index == self.selected_range_end:
+                return 'orange'
         if label > self.kmh_to_ms(self.high_offset_value.get()):
             return 'green'
         elif label > self.kmh_to_ms(self.low_offset_value.get()):
@@ -363,6 +378,25 @@ class PlotTool:
                                     self.labels[i] = new_label
                             self.plot_data()
                             self.edit_labels_start = None
+            elif self.move_selected_var.get():
+                if not self.selected_range_start:
+                    # 1つ目の点選択
+                    self.selected_range_start = self.find_nearest_point(event.xdata, event.ydata)
+                    self.plot_data()
+                elif not self.selected_range_end:
+                    # 2つ目の点選択
+                    self.selected_range_end = self.find_nearest_point(event.xdata, event.ydata)
+                    if self.selected_range_start is not None and self.selected_range_end is not None:
+                        # 選択範囲の点を取得
+                        self.selected_range_points = self.get_points_in_range(self.selected_range_start, self.selected_range_end)
+                        self.dragging_range = True  # ドラッグモードをON
+                        self.plot_data()
+                else:
+                    # 範囲が選択済みの場合は新しい範囲にリセット
+                    self.selected_range_start = self.find_nearest_point(event.xdata, event.ydata)
+                    self.selected_range_end = None
+                    self.selected_range_points = []
+                    self.dragging_range = False
 
 
         elif event.button == MouseButton.RIGHT:
@@ -375,6 +409,8 @@ class PlotTool:
         self.selected_point = None
         self.selected_line = None
         self.pan_active = False  # 画面移動を終了
+        self.dragging_range = False  # 範囲ドラッグを終了
+
 
     def on_motion(self, event):
         if self.selected_point is not None and event.inaxes == self.ax:
@@ -395,6 +431,16 @@ class PlotTool:
             self.ax.set_ylim(ylim[0] + dy, ylim[1] + dy)
 
             self.canvas.draw()  # 描画を更新
+        elif self.dragging_range and self.selected_range_points and event.inaxes == self.ax:
+            # 選択範囲の点をすべて平行移動
+            dx = event.xdata - self.x[self.selected_range_points[0]]
+            dy = event.ydata - self.y[self.selected_range_points[0]]
+
+            for idx in self.selected_range_points:
+                self.x[idx] += dx
+                self.y[idx] += dy
+
+            self.plot_data()  # グラフの再描画
 
     def on_scroll(self, event):
         # スクロールイベントでズームイン/ズームアウト
@@ -507,6 +553,12 @@ class PlotTool:
         self.y_q.append(q[1])
         self.z_q.append(q[2])
         self.w_q.append(q[3])
+
+    def get_points_in_range(self, start_idx, end_idx):
+        # start_idxとend_idxの範囲内の点インデックスを取得
+        if start_idx > end_idx:
+            start_idx, end_idx = end_idx, start_idx
+        return list(range(start_idx, end_idx + 1))
 
 
     def ms_to_kmh(self, ms):
