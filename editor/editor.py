@@ -552,19 +552,19 @@ class PlotTool:
             dx, dy, dz = x1 - x0, y1 - y0, z1 - z0
             yaw = np.arctan2(dy, dx)
             q = self.quaternion_from_euler(0, 0, yaw)
-            self.x_q.append(q[0])
-            self.y_q.append(q[1])
-            self.z_q.append(q[2])
-            self.w_q.append(q[3])
+            self.x_q.append(q[1])
+            self.y_q.append(q[2])
+            self.z_q.append(q[3])
+            self.w_q.append(q[0])
         x0, y0, z0 = self.x[-1], self.y[-1], self.z[-1]
         x1, y1, z1 = self.x[0], self.y[0], self.z[0]
         dx, dy, dz = x1 - x0, y1 - y0, z1 - z0
         yaw = np.arctan2(dy, dx)
         q = self.quaternion_from_euler(0, 0, yaw)
-        self.x_q.append(q[0])
-        self.y_q.append(q[1])
-        self.z_q.append(q[2])
-        self.w_q.append(q[3])
+        self.x_q.append(q[1])
+        self.y_q.append(q[2])
+        self.z_q.append(q[3])
+        self.w_q.append(q[0])
 
     def get_points_in_range(self, start_idx, end_idx):
         # start_idxとend_idxの範囲内の点インデックスを取得
@@ -615,7 +615,7 @@ class PlotTool:
     def quaternion_from_euler(self, roll, pitch, yaw):
         """
         Converts euler roll, pitch, yaw to quaternion (w in last place)
-        quat = [x, y, z, w]
+        quat = [w, x, y, z]
         Bellow should be replaced when porting for ROS 2 Python tf_conversions is done.
         """
         cy = math.cos(yaw * 0.5)
