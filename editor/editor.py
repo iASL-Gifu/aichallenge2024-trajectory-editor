@@ -76,7 +76,7 @@ class PlotTool:
         self.dark_mode_checkbutton.grid(row=0, column=11, padx=5, pady=5)
 
         self.move_selected_var = tk.BooleanVar(value=False)
-        self.move_selected_checkbutton = tk.Checkbutton(self.frame, text="Move Selected Points", variable=self.move_selected_var)
+        self.move_selected_checkbutton = tk.Checkbutton(self.frame, text="Move Selected Points", variable=self.move_selected_var, command=self.set_move_selected)
         self.move_selected_checkbutton.grid(row=0, column=12, padx=5, pady=5)
 
         # オプションメニュー
@@ -155,30 +155,42 @@ class PlotTool:
         self.edit_label_var.set(False)
         self.delete_point_var.set(False)
         self.calculate_speed_var.set(False)
+        self.move_selected_var.set(False)
 
     def set_move_point(self):
         self.add_point_var.set(False)
         self.edit_label_var.set(False)
         self.delete_point_var.set(False)
         self.calculate_speed_var.set(False)
+        self.move_selected_var.set(False)
 
     def set_edit_label(self):
         self.add_point_var.set(False)
         self.move_point_var.set(False)
         self.delete_point_var.set(False)
         self.calculate_speed_var.set(False)
+        self.move_selected_var.set(False)
 
     def set_delete_point(self):
         self.add_point_var.set(False)
         self.move_point_var.set(False)
         self.edit_label_var.set(False)
         self.calculate_speed_var.set(False)
+        self.move_selected_var.set(False)
 
     def set_edit_labels(self):
         self.add_point_var.set(False)
         self.move_point_var.set(False)
         self.edit_label_var.set(False)
         self.delete_point_var.set(False)
+        self.move_selected_var.set(False)
+    
+    def set_move_selected(self):
+        self.add_point_var.set(False)
+        self.move_point_var.set(False)
+        self.edit_label_var.set(False)
+        self.delete_point_var.set(False)
+        self.calculate_speed_var.set(False)
 
     def on_option_change(self, *args):
         self.plot_data()
