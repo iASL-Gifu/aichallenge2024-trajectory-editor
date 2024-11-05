@@ -151,6 +151,12 @@ class PlotTool:
         # このpythonスクリプトのディレクトリを取得
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
 
+        # ディレクトリの一つ上のディレクトリを取得
+        self.parent_dir = os.path.dirname(self.script_dir)
+
+        self.default_map_path = self.parent_dir + '/csv/lane.csv'
+        self.load_map(self.default_map_path)
+
     def set_add_point(self):
         self.move_point_var.set(False)
         self.edit_label_var.set(False)
@@ -256,8 +262,11 @@ class PlotTool:
         except subprocess.CalledProcessError as e:
             print(f"Error: {e.stderr}")
 
-    def load_map(self):
-        file_path = filedialog.askopenfilename()
+    def load_map(self, path=None):
+        if path is None:
+            file_path = filedialog.askopenfilename()
+        else:
+            file_path = path
         if not file_path:
             return
         self.inner_map_x, self.inner_map_y, self.outer_map_x, self.outer_map_y = [], [], [], []
@@ -273,7 +282,7 @@ class PlotTool:
         
         self.ax.plot(self.inner_map_x, self.inner_map_y, 'b-')
         self.ax.plot(self.outer_map_x, self.outer_map_y, 'b-')
-        self.canvas.draw()
+        self.plot_data()
 
     def save_csv(self, path=None):
         self.calc_quaternion()
