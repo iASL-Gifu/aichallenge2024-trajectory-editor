@@ -91,6 +91,16 @@ class PlotTool:
         self.reset_button = tk.Button(self.options_frame, text="reset view", command=self.reset_view)
         self.reset_button.grid(row=0, column=2, padx=5, pady=5)
 
+        # ラベル値の加減するための設定
+        self.add_label_value = tk.DoubleVar(value=0.0)
+        tk.Label(self.options_frame, text="+/- Value:").grid(row=0, column=3, padx=5, pady=5)
+        self.add_label_entry = tk.Entry(self.options_frame, textvariable=self.add_label_value)
+        self.add_label_entry.grid(row=0, column=4, padx=5, pady=5)
+        self.add_button = tk.Button(self.options_frame, text="+", command=self.add_label)
+        self.add_button.grid(row=0, column=5, padx=5, pady=5)
+        self.sub_button = tk.Button(self.options_frame, text="-", command=self.sub_label)
+        self.sub_button.grid(row=0, column=6, padx=5, pady=5)
+
         # 色変更オフセット値の設定
         self.low_offset_value = tk.DoubleVar(value=10.0)
         tk.Label(self.options_frame, text="Low Color Value:").grid(row=1, column=0, padx=5, pady=5)
@@ -101,6 +111,14 @@ class PlotTool:
         tk.Label(self.options_frame, text="High Color Value:").grid(row=1, column=2, padx=5, pady=5)
         self.color_offset_entry = tk.Entry(self.options_frame, textvariable=self.high_offset_value)
         self.color_offset_entry.grid(row=1, column=3, padx=5, pady=5)
+
+        # ラベル値に一定割合かける処理
+        self.multiply_label_value = tk.DoubleVar(value=1.0)
+        tk.Label(self.options_frame, text="Multiply Value:").grid(row=1, column=4, padx=5, pady=5)
+        self.multiply_label_entry = tk.Entry(self.options_frame, textvariable=self.multiply_label_value)
+        self.multiply_label_entry.grid(row=1, column=5, padx=5, pady=5)
+        self.multiply_button = tk.Button(self.options_frame, text="Multiply", command=self.multiply_label)
+        self.multiply_button.grid(row=1, column=6, padx=5, pady=5)
 
         # 変数の変更を監視
         self.initial_label_value.trace("w", self.on_option_change)
@@ -199,6 +217,26 @@ class PlotTool:
         self.edit_label_var.set(False)
         self.delete_point_var.set(False)
         self.calculate_speed_var.set(False)
+
+    def add_label(self):
+        if self.add_label_value.get() != 0:
+            add_value = self.kmh_to_ms(float(self.add_label_value.get()))
+            for i in range(len(self.labels)):
+                self.labels[i] += add_value
+            self.plot_data()
+    
+    def sub_label(self):
+        if self.add_label_value.get() != 0:
+            for i in range(len(self.labels)):
+                if self.labels[i] > self.kmh_to_ms(float(self.add_label_value.get())):
+                    self.labels[i] -= self.kmh_to_ms(float(self.add_label_value.get()))
+            self.plot_data()
+    
+    def multiply_label(self):
+        if self.multiply_label_value.get() > 0:
+            for i in range(len(self.labels)):
+                self.labels[i] *= float(self.multiply_label_value.get())
+            self.plot_data()
 
     def on_option_change(self, *args):
         self.plot_data()
