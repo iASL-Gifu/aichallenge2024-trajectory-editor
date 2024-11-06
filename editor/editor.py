@@ -108,8 +108,9 @@ class PlotTool:
         self.high_offset_value.trace("w", self.on_option_change)
 
         # Matplotlibの図と軸を設定
-        self.fig, self.ax = plt.subplots(figsize=(10, 8))
+        self.fig, self.ax = plt.subplots()
         self.fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+        self.ax.set_aspect('equal', adjustable='datalim')
         self.fig.patch.set_facecolor('white')  # 図の背景を白色に設定
         self.ax.set_facecolor('white')         # 軸の背景を白色に設定
 
