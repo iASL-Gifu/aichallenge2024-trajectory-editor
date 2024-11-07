@@ -79,6 +79,10 @@ class PlotTool:
         self.move_selected_checkbutton = tk.Checkbutton(self.frame, text="Move Selected Points", variable=self.move_selected_var, command=self.set_move_selected)
         self.move_selected_checkbutton.grid(row=0, column=12, padx=5, pady=5)
 
+        self.straight_line_var = tk.BooleanVar(value=False)
+        self.straight_line_checkbutton = tk.Checkbutton(self.frame, text="Straight Line", variable=self.straight_line_var, command=self.set_straight_line)
+        self.straight_line_checkbutton.grid(row=0, column=13, padx=5, pady=5)
+
         # オプションメニュー
         self.options_frame = tk.Frame(master)
         self.options_frame.pack()
@@ -182,6 +186,7 @@ class PlotTool:
         self.delete_point_var.set(False)
         self.calculate_speed_var.set(False)
         self.move_selected_var.set(False)
+        self.straight_line_var.set(False)
 
     def set_move_point(self):
         self.add_point_var.set(False)
@@ -189,6 +194,7 @@ class PlotTool:
         self.delete_point_var.set(False)
         self.calculate_speed_var.set(False)
         self.move_selected_var.set(False)
+        self.straight_line_var.set(False)
 
     def set_edit_label(self):
         self.add_point_var.set(False)
@@ -196,6 +202,7 @@ class PlotTool:
         self.delete_point_var.set(False)
         self.calculate_speed_var.set(False)
         self.move_selected_var.set(False)
+        self.straight_line_var.set(False)
 
     def set_delete_point(self):
         self.add_point_var.set(False)
@@ -203,6 +210,7 @@ class PlotTool:
         self.edit_label_var.set(False)
         self.calculate_speed_var.set(False)
         self.move_selected_var.set(False)
+        self.straight_line_var.set(False)
 
     def set_edit_labels(self):
         self.add_point_var.set(False)
@@ -210,6 +218,7 @@ class PlotTool:
         self.edit_label_var.set(False)
         self.delete_point_var.set(False)
         self.move_selected_var.set(False)
+        self.straight_line_var.set(False)
     
     def set_move_selected(self):
         self.add_point_var.set(False)
@@ -217,6 +226,23 @@ class PlotTool:
         self.edit_label_var.set(False)
         self.delete_point_var.set(False)
         self.calculate_speed_var.set(False)
+        self.straight_line_var.set(False)
+        self.selected_range_start = None
+        self.selected_range_end = None
+        self.selected_range_points = []
+        self.plot_data()
+    
+    def set_straight_line(self):
+        self.add_point_var.set(False)
+        self.move_point_var.set(False)
+        self.edit_label_var.set(False)
+        self.delete_point_var.set(False)
+        self.calculate_speed_var.set(False)
+        self.move_selected_var.set(False)
+        self.selected_range_start = None
+        self.selected_range_end = None
+        self.selected_range_points = []
+        self.plot_data()
 
     def add_label(self):
         if self.add_label_value.get() != 0:
@@ -458,6 +484,31 @@ class PlotTool:
                     self.selected_range_end = None
                     self.selected_range_points = []
                     self.dragging_range = False
+            elif self.straight_line_var.get():
+                if not self.selected_range_start:
+                    # 1つ目の点選択
+                    self.selected_range_start = self.find_nearest_point(event.xdata, event.ydata)
+                    self.plot_data()
+                elif not self.selected_range_end:
+                    # 2つ目の点選択
+                    self.selected_range_end = self.find_nearest_point(event.xdata, event.ydata)
+                    if self.selected_range_start is not None and self.selected_range_end is not None:
+                        # 選択範囲の点を取得
+                        self.selected_range_points = self.get_points_in_range(self.selected_range_start, self.selected_range_end)
+                        # startとendの点を結ぶ直線を求める
+                        x0, y0 = self.x[self.selected_range_start], self.y[self.selected_range_start]
+                        x1, y1 = self.x[self.selected_range_end], self.y[self.selected_range_end]
+                        for i in range(self.selected_range_start+1, self.selected_range_end):
+                            x, y = self.project_point_on_line(x0, y0, x1, y1, self.x[i], self.y[i])
+                            self.x[i] = x
+                            self.y[i] = y
+                        self.plot_data()
+                else:
+                    # 範囲が選択済みの場合は新しい範囲にリセット
+                    self.selected_range_start = self.find_nearest_point(event.xdata, event.ydata)
+                    self.selected_range_end = None
+                    self.selected_range_points = []
+                    self.plot_data()
 
 
         elif event.button == MouseButton.RIGHT:
@@ -562,6 +613,9 @@ class PlotTool:
         return None
     
     def project_point_on_line(self, x0, y0, x1, y1, x, y):
+        """
+        点(x, y)を直線(x0, y0)-(x1, y1)に射影する
+        """
         dx, dy = x1 - x0, y1 - y0
         if dx == 0 and dy == 0:
             return x0, y0
