@@ -401,6 +401,9 @@ class PlotTool:
         for i in range(len(self.x) - 1):
             color = self.get_color(self.labels[i + 1])
             self.ax.plot(self.x[i:i + 2], self.y[i:i + 2], color=color)
+        if self.labels:
+            color = self.get_color(self.labels[0])
+            self.ax.plot([self.x[-1], self.x[0]], [self.y[-1], self.y[0]], color=color)
 
         # チェックボタンの状態に応じてラベルを表示
         if self.show_labels_var.get():
