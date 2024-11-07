@@ -514,7 +514,7 @@ class PlotTool:
                         # startとendの点を結ぶ直線を求める
                         x0, y0 = self.x[self.selected_range_start], self.y[self.selected_range_start]
                         x1, y1 = self.x[self.selected_range_end], self.y[self.selected_range_end]
-                        for i in range(self.selected_range_start+1, self.selected_range_end):
+                        for i in self.selected_range_points[1:]:
                             x, y = self.project_point_on_line(x0, y0, x1, y1, self.x[i], self.y[i])
                             self.x[i] = x
                             self.y[i] = y
