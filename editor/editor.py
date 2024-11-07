@@ -83,6 +83,11 @@ class PlotTool:
         self.straight_line_checkbutton = tk.Checkbutton(self.frame, text="Straight Line", variable=self.straight_line_var, command=self.set_straight_line)
         self.straight_line_checkbutton.grid(row=0, column=13, padx=5, pady=5)
 
+        self.undo_button = tk.Button(self.frame, text="Undo", command=self.undo)
+        self.undo_button.grid(row=0, column=14, padx=5, pady=5)
+        self.redo_button = tk.Button(self.frame, text="Redo", command=self.redo)
+        self.redo_button.grid(row=0, column=15, padx=5, pady=5)
+
         # オプションメニュー
         self.options_frame = tk.Frame(master)
         self.options_frame.pack()
@@ -171,12 +176,19 @@ class PlotTool:
         self.selected_range_start = None
         self.selected_range_end = None
 
+        # undo redo用のlist
+        self.undo_list = []
+        self.redo_list = []
+
         # このpythonスクリプトのディレクトリを取得
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
 
         # ディレクトリの一つ上のディレクトリを取得
         self.parent_dir = os.path.dirname(self.script_dir)
 
+        self.save_undo_trajectory()
+
+        # csvの初回ロード
         self.default_map_path = self.parent_dir + '/csv/lane.csv'
         self.load_map(self.default_map_path)
 
@@ -250,6 +262,7 @@ class PlotTool:
             for i in range(len(self.labels)):
                 self.labels[i] += add_value
             self.plot_data()
+            self.save_undo_trajectory()
     
     def sub_label(self):
         if self.add_label_value.get() != 0:
@@ -257,12 +270,14 @@ class PlotTool:
                 if self.labels[i] > self.kmh_to_ms(float(self.add_label_value.get())):
                     self.labels[i] -= self.kmh_to_ms(float(self.add_label_value.get()))
             self.plot_data()
+            self.save_undo_trajectory()
     
     def multiply_label(self):
         if self.multiply_label_value.get() > 0:
             for i in range(len(self.labels)):
                 self.labels[i] *= float(self.multiply_label_value.get())
             self.plot_data()
+            self.save_undo_trajectory()
 
     def on_option_change(self, *args):
         self.plot_data()
@@ -319,6 +334,8 @@ class PlotTool:
         # 軸の範囲をデータに合わせて調整
         self.ax.set_xlim(min(self.x) - 5, max(self.x) + 5)
         self.ax.set_ylim(min(self.y) - 5, max(self.y) + 5)
+
+        self.save_undo_trajectory()
         
         self.plot_data()
 
@@ -481,6 +498,7 @@ class PlotTool:
                                     self.labels[i] = new_label
                             self.plot_data()
                             self.edit_labels_start = None
+                            self.save_undo_trajectory()
             elif self.move_selected_var.get():
                 if not self.selected_range_start:
                     # 1つ目の点選択
@@ -501,7 +519,7 @@ class PlotTool:
                     self.selected_range_points = []
                     self.dragging_range = False
             elif self.straight_line_var.get():
-                if not self.selected_range_start:
+                if not self.selected_range_start and self.selected_range_end is None:
                     # 1つ目の点選択
                     self.selected_range_start = self.find_nearest_point(event.xdata, event.ydata)
                     self.plot_data()
@@ -519,6 +537,7 @@ class PlotTool:
                             self.x[i] = x
                             self.y[i] = y
                         self.plot_data()
+                        self.save_undo_trajectory()
                 else:
                     # 範囲が選択済みの場合は新しい範囲にリセット
                     self.selected_range_start = self.find_nearest_point(event.xdata, event.ydata)
@@ -534,6 +553,10 @@ class PlotTool:
             self.pan_start = (event.xdata, event.ydata)
 
     def on_release(self, event):
+        if self.dragging_range:
+            self.save_undo_trajectory()
+        if self.selected_point is not None:
+            self.save_undo_trajectory()
         self.selected_point = None
         self.selected_line = None
         self.pan_active = False  # 画面移動を終了
@@ -625,6 +648,7 @@ class PlotTool:
             self.y.insert(nearest_idx + 1, nearest_point[1])
             self.labels.insert(nearest_idx + 1, self.kmh_to_ms(self.initial_label_value.get()))
             self.plot_data()
+            self.save_undo_trajectory()
             return nearest_idx + 1
         return None
     
@@ -651,6 +675,7 @@ class PlotTool:
         self.y.pop(point_idx)
         self.labels.pop(point_idx)
         self.plot_data()
+        self.save_undo_trajectory()
 
     def edit_label(self, point_idx):
         # ポイントのラベルをダブルクリックで編集
@@ -658,6 +683,7 @@ class PlotTool:
         if new_label is not None:
             self.labels[point_idx] = self.kmh_to_ms(float(new_label))
             self.plot_data()
+            self.save_undo_trajectory()
 
     def calc_quaternion(self):
         # すべての点において、次の点を使ってクォータニオンを計算(yawのみ)
@@ -698,6 +724,23 @@ class PlotTool:
             return list(range(start_idx, -1, step)) + list(range(trj_length-1, end_idx-1, step))
         else:
             return list(range(start_idx, end_idx+step, step))
+        
+    def save_undo_trajectory(self):
+        # 現在の軌跡をundo_listに保存
+        self.undo_list.append((self.x.copy(), self.y.copy(), self.labels.copy()))
+        self.redo_list.clear()
+    
+    def undo(self):
+        if self.undo_list:
+            self.x, self.y, self.labels = self.undo_list.pop()
+            self.redo_list.append((self.x.copy(), self.y.copy(), self.labels.copy()))
+            self.plot_data()
+    
+    def redo(self):
+        if self.redo_list:
+            self.x, self.y, self.labels = self.redo_list.pop()
+            self.undo_list.append((self.x.copy(), self.y.copy(), self.labels.copy()))
+            self.plot_data()
 
 
     def ms_to_kmh(self, ms):
