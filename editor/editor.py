@@ -305,7 +305,16 @@ class PlotTool:
                     self.z_q.append(float(row[5]))
                     self.w_q.append(float(row[6]))
                     self.labels.append(float(row[7]))
-            print(len(self.x))
+            # 末尾の値と先頭の値が同じ場合は末尾の値を削除
+            if self.x[-1] == self.x[0] and self.y[-1] == self.y[0]:
+                self.x.pop(-1)
+                self.y.pop(-1)
+                self.z.pop(-1)
+                self.x_q.pop(-1)
+                self.y_q.pop(-1)
+                self.z_q.pop(-1)
+                self.w_q.pop(-1)
+                self.labels.pop(-1)
         
         # 軸の範囲をデータに合わせて調整
         self.ax.set_xlim(min(self.x) - 5, max(self.x) + 5)
@@ -363,6 +372,10 @@ class PlotTool:
             writer.writerow(self.header)
             for i in range(len(self.x)):
                 writer.writerow([self.x[i], self.y[i], self.z[i], self.x_q[i], self.y_q[i], self.z_q[i], self.w_q[i], self.labels[i]])
+            # 最初に追加した点を末尾に追加
+            if self.x[0] != self.x[-1] or self.y[0] != self.y[-1]:
+                writer.writerow([self.x[0], self.y[0], self.z[0], self.x_q[0], self.y_q[0], self.z_q[0], self.w_q[0], self.labels[0]])
+            
 
     def plot_data(self):
         # 現在のxlimとylimを保存
