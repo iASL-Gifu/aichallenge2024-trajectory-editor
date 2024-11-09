@@ -332,7 +332,9 @@ class PlotTool:
         path = self.script_dir + '/.post/post.csv'
         self.save_csv(path)
         try:
-            result = subprocess.run(['bash', self.script_dir + '/shell.sh', path], check=True, capture_output=True, text=True)
+            result = subprocess.run(['bash', self.script_dir + '/shell.sh', path], check=True, capture_output=True, text=True, timeout=5)
+        except subprocess.TimeoutExpired:
+            print("Error: The subprocess timed out.")
         except subprocess.CalledProcessError as e:
             print(f"Error: {e.stderr}")
 
