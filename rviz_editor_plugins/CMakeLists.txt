@@ -12,6 +12,7 @@ find_package(pluginlib REQUIRED)
 find_package(rviz_common REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(rviz_rendering REQUIRED)
 find_package(rviz_ogre_vendor REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Widgets)
@@ -33,6 +34,7 @@ ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   rviz_common
   visualization_msgs
+  geometry_msgs
 )
 
 target_link_libraries(${PROJECT_NAME} Qt5::Widgets)

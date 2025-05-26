@@ -81,6 +81,13 @@ namespace rviz_editor_plugins
         RCLCPP_ERROR(node_->get_logger(), "有効なデータが見つかりませんでした");
         return;
       }
+      if (markerPointsToLine(marker_array)) {
+        // status_property_->setText("CSV を正常に読み込み、マーカーを表示しました");
+        RCLCPP_INFO(node_->get_logger(), "CSV を正常に読み込み、マーカーを表示しました");
+      } else {
+        // status_property_->setText("マーカーのライン生成に失敗しました");
+        RCLCPP_ERROR(node_->get_logger(), "マーカーのライン生成に失敗しました");
+      }
       marker_pub_->publish(marker_array);
       if (any_error) {
         // status_property_->setText("一部の行でパースエラーが発生しました (ログを確認)");
@@ -100,6 +107,59 @@ namespace rviz_editor_plugins
       RCLCPP_INFO(node_->get_logger(), "Saving CSV file: %s", fileName.toStdString().c_str());
       // Add your CSV saving logic here
     }
+  }
+
+  bool CsvMarkerDisplay::markerPointsToLine(visualization_msgs::msg::MarkerArray & marker_array)
+  {
+    int maker_count = marker_array.markers.size();
+    std::vector<visualization_msgs::msg::Marker> line_markers;
+    for (int i = 0; i < maker_count-1; ++i) {
+      visualization_msgs::msg::Marker line_marker;
+      const auto & marker = marker_array.markers[i];
+      const auto & next_marker = marker_array.markers[i + 1];
+      geometry_msgs::msg::Point start_point = marker.pose.position;
+      geometry_msgs::msg::Point end_point = next_marker.pose.position;
+      line_marker.header.frame_id = "map";
+      line_marker.header.stamp = node_->now();
+      line_marker.ns = "race_trajectory_line";
+      line_marker.id = i;
+      line_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+      line_marker.action = visualization_msgs::msg::Marker::ADD;
+
+      line_marker.pose.orientation.w = 1.0;  // 単位四元数
+      line_marker.scale.x = 0.1;  // 線の太さ
+      line_marker.color = marker.color;
+      line_marker.color.a = 1.0;  // 不透明度
+      line_marker.points.push_back(start_point);
+      line_marker.points.push_back(end_point);
+      line_markers.push_back(line_marker);
+    }
+    // last marker is connected to first marker
+    visualization_msgs::msg::Marker last_line_marker;
+    const auto & last_marker = marker_array.markers[maker_count - 1];
+    const auto & first_marker = marker_array.markers[0];
+    geometry_msgs::msg::Point last_start_point = last_marker.pose.position;
+    geometry_msgs::msg::Point last_end_point = first_marker.pose.position;
+    last_line_marker.header.frame_id = "map";
+    last_line_marker.header.stamp = node_->now();
+    last_line_marker.ns = "race_trajectory_line";
+    last_line_marker.id = maker_count - 1;
+    last_line_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+    last_line_marker.action = visualization_msgs::msg::Marker::ADD;
+    last_line_marker.pose.orientation.w = 1.0;  // 単位四元数
+    last_line_marker.scale.x = 0.1;  // 線の太さ
+    last_line_marker.color = last_marker.color;
+    last_line_marker.color.a = 1.0;  // 不透明度
+    last_line_marker.points.push_back(last_start_point);
+    last_line_marker.points.push_back(last_end_point);
+    line_markers.push_back(last_line_marker);
+    marker_array.markers.insert(
+      marker_array.markers.end(),
+      line_markers.begin(),
+      line_markers.end()
+    );
+
+    return true;
   }
 
   bool CsvMarkerDisplay::parseLineToMarker(const std::string & line, int id, visualization_msgs::msg::Marker & marker)
