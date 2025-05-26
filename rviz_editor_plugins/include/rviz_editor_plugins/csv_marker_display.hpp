@@ -5,6 +5,7 @@
 # include <rclcpp/rclcpp.hpp>
 # include <rviz_common/panel.hpp>
 # include <QtWidgets>
+# include "visualization_msgs/msg/marker_array.hpp"
 # endif
 
 namespace rviz_editor_plugins
@@ -26,8 +27,10 @@ protected:
   rclcpp::Node::SharedPtr node_;
   QPushButton * load_button_;
   QPushButton * save_button_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
   void loadCsv();
   void saveCsv();
+  bool parseLineToMarker(const std::string & line, int id, visualization_msgs::msg::Marker & marker);
 };
 
 }

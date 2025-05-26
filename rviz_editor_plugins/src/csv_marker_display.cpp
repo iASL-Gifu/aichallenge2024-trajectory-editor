@@ -1,8 +1,9 @@
 #include "rviz_editor_plugins/csv_marker_display.hpp"
-// #include "csv_marker_display.hpp"
 
 #include <rviz_common/display_context.hpp>
 #include <rviz_common/config.hpp>
+#include "visualization_msgs/msg/marker_array.hpp"
+#include "visualization_msgs/msg/marker.hpp"
 
 // #include <QsizePolicy>
 
@@ -15,6 +16,9 @@ namespace rviz_editor_plugins
 
     load_button_ = new QPushButton("Load CSV");
     save_button_ = new QPushButton("Save CSV");
+    marker_pub_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>("race_trajectory", 10);
+    // status_property_->setText("CSV を選択してください");
+    
 
     QVBoxLayout * layout = new QVBoxLayout;
     layout->addWidget(load_button_);
@@ -46,7 +50,45 @@ namespace rviz_editor_plugins
     if (!fileName.isEmpty()) {
       // Logic to load CSV file
       RCLCPP_INFO(node_->get_logger(), "Loading CSV file: %s", fileName.toStdString().c_str());
-      
+      std::ifstream ifs(fileName.toStdString());
+      if (!ifs.is_open()) {
+        RCLCPP_ERROR(node_->get_logger(), "Failed to open file: %s", fileName.toStdString().c_str());
+        return;
+      }
+      std::string line;
+      if (!std::getline(ifs, line)) {
+        // status_property_->setText("CSV が空です");
+        RCLCPP_ERROR(node_->get_logger(), "CSV が空です");
+        return;
+      }
+      visualization_msgs::msg::MarkerArray marker_array;
+      int id = 0;
+      bool any_error = false;
+
+      while (std::getline(ifs, line)) {
+        visualization_msgs::msg::Marker marker;
+        if (parseLineToMarker(line, id, marker)) {
+          marker_array.markers.push_back(marker);
+          id++;
+        } else {
+          any_error = true;
+          RCLCPP_WARN(node_->get_logger(), "CSV の %d 行目をパースできませんでした: [%s]", id + 1, line.c_str());
+        }
+      }
+      ifs.close();
+      if (marker_array.markers.empty()) {
+        // status_property_->setText("有効なデータが見つかりませんでした");
+        RCLCPP_ERROR(node_->get_logger(), "有効なデータが見つかりませんでした");
+        return;
+      }
+      marker_pub_->publish(marker_array);
+      if (any_error) {
+        // status_property_->setText("一部の行でパースエラーが発生しました (ログを確認)");
+        RCLCPP_WARN(node_->get_logger(), "一部の行でパースエラーが発生しました (ログを確認)");
+      } else {
+        // status_property_->setText("CSV を正常に読み込み、マーカーを表示しました");
+        RCLCPP_INFO(node_->get_logger(), "CSV を正常に読み込み、マーカーを表示しました");
+      }
     }
   }
 
@@ -58,6 +100,78 @@ namespace rviz_editor_plugins
       RCLCPP_INFO(node_->get_logger(), "Saving CSV file: %s", fileName.toStdString().c_str());
       // Add your CSV saving logic here
     }
+  }
+
+  bool CsvMarkerDisplay::parseLineToMarker(const std::string & line, int id, visualization_msgs::msg::Marker & marker)
+  {
+    // 1 行をカンマ区切りでトークン化
+    std::stringstream ss(line);
+    std::string token;
+    std::vector<std::string> elems;
+    while (std::getline(ss, token, ',')) {
+      elems.push_back(token);
+    }
+    // ヘッダ行を除去する処理を呼び出し側で行っているので，
+    // ヘッダ以外の行は 8 要素 (x, y, z, x_quat, y_quat, z_quat, w_quat, speed) のはず
+    if (elems.size() != 8) {
+      return false;
+    }
+    // 座標
+    double x = std::stod(elems[0]);
+    double y = std::stod(elems[1]);
+    double z = std::stod(elems[2]);
+    // 四元数
+    double qx = std::stod(elems[3]);
+    double qy = std::stod(elems[4]);
+    double qz = std::stod(elems[5]);
+    double qw = std::stod(elems[6]);
+    // speed（今回はマーカーのサイズに反映する例）
+    double speed = std::stod(elems[7]);
+
+    // Marker の設定
+    marker.header.frame_id = "map";
+    marker.header.stamp = node_->now();
+    marker.ns = "race_trajectory";
+    marker.id = id;
+    marker.type = visualization_msgs::msg::Marker::ARROW;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+
+    // ポーズの設定
+    marker.pose.position.x = x;
+    marker.pose.position.y = y;
+    marker.pose.position.z = z;
+    marker.pose.orientation.x = qx;
+    marker.pose.orientation.y = qy;
+    marker.pose.orientation.z = qz;
+    marker.pose.orientation.w = qw;
+
+    // 矢印サイズは speed をもとにスケール (調整は自由)
+    marker.scale.x = 1.0;        // 矢印の長さ
+    marker.scale.y = 0.5;  // 矢印の幅
+    marker.scale.z = 1.0;  // 矢印の太さ
+
+
+    // speedに応じて色を設定
+    if (speed < 3.0) {
+      marker.color.r = 0.0f;  // 赤
+      marker.color.g = 1.0f;  // 緑
+      marker.color.b = 0.0f;  // 青
+    } else if (speed < 6.0) {
+      marker.color.r = 1.0f;  // 赤
+      marker.color.g = 1.0f;  // 緑
+      marker.color.b = 0.0f;  // 青
+    } else {
+      marker.color.r = 1.0f;  // 赤
+      marker.color.g = 0.0f;  // 緑
+      marker.color.b = 0.0f;  // 青
+    }
+    marker.color.a = 1.0f;  // 不透明度
+    // marker.color.r = 0.0f;
+    // marker.color.g = 0.0f;
+    // marker.color.b = 1.0f;
+    // marker.color.a = 1.0f;
+
+    return true;
   }
 }
 
