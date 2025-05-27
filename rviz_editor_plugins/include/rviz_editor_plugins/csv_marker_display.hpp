@@ -31,6 +31,7 @@ protected:
   void loadCsv();
   void saveCsv();
   bool parseLineToMarker(const std::string & line, int id, visualization_msgs::msg::Marker & marker);
+  bool markerPointsToVelocityLine(visualization_msgs::msg::MarkerArray & marker_array);
 };
 
 }

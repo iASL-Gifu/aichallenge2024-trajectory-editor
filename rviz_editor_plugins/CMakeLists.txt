@@ -27,6 +27,7 @@ include_directories(
 
 add_library(${PROJECT_NAME} SHARED
   src/csv_marker_display.cpp
+  src/move_tool.cpp
 )
 
 ament_target_dependencies(${PROJECT_NAME} 
@@ -35,6 +36,8 @@ ament_target_dependencies(${PROJECT_NAME}
   rviz_common
   visualization_msgs
   geometry_msgs
+  rviz_rendering
+  rviz_ogre_vendor
 )
 
 target_link_libraries(${PROJECT_NAME} Qt5::Widgets)
