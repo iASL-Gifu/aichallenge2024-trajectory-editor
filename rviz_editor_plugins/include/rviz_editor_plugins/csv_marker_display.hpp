@@ -6,6 +6,7 @@
 # include <rviz_common/panel.hpp>
 # include <QtWidgets>
 # include "visualization_msgs/msg/marker_array.hpp"
+# include "editor_tool_srvs/srv/load_csv.hpp"
 # endif
 
 namespace rviz_editor_plugins
@@ -27,11 +28,9 @@ protected:
   rclcpp::Node::SharedPtr node_;
   QPushButton * load_button_;
   QPushButton * save_button_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+  rclcpp::Client<editor_tool_srvs::srv::LoadCsv>::SharedPtr service_client_;
   void loadCsv();
   void saveCsv();
-  bool parseLineToMarker(const std::string & line, int id, visualization_msgs::msg::Marker & marker);
-  bool markerPointsToVelocityLine(visualization_msgs::msg::MarkerArray & marker_array);
 };
 
 }

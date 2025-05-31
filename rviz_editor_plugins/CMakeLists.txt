@@ -12,10 +12,12 @@ find_package(pluginlib REQUIRED)
 find_package(rviz_common REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(interactive_markers REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rviz_rendering REQUIRED)
 find_package(rviz_ogre_vendor REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Widgets)
+find_package(editor_tool_srvs REQUIRED)
 
 include_directories(src ${OGRE_INCLUDE_DIRS} ${OGRE_INCLUDE_DIRS}/Paging)
 
@@ -27,7 +29,6 @@ include_directories(
 
 add_library(${PROJECT_NAME} SHARED
   src/csv_marker_display.cpp
-  src/move_tool.cpp
 )
 
 ament_target_dependencies(${PROJECT_NAME} 
@@ -35,6 +36,8 @@ ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   rviz_common
   visualization_msgs
+  interactive_markers
+  editor_tool_srvs
   geometry_msgs
   rviz_rendering
   rviz_ogre_vendor
