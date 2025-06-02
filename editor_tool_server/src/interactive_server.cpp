@@ -238,10 +238,20 @@ namespace editor_tool_server
               if (use_forward) {
                 int idx = i1;
                 while (true) {
-                  trajectory_markers_[idx].color.r = 0.0f;
-                  trajectory_markers_[idx].color.g = 0.0f;
-                  trajectory_markers_[idx].color.b = 1.0f;
-                  trajectory_markers_[idx].color.a = 1.0f;
+                    // 速度ごとに色を変える
+                    if (selection_velocity_ < 10.0) {
+                      trajectory_markers_[idx].color.r = 1.0f;
+                      trajectory_markers_[idx].color.g = 0.0f;
+                      trajectory_markers_[idx].color.b = 0.0f;
+                    } else if (selection_velocity_ < 20.0) {
+                      trajectory_markers_[idx].color.r = 1.0f;
+                      trajectory_markers_[idx].color.g = 1.0f;
+                      trajectory_markers_[idx].color.b = 0.0f;
+                    } else {
+                      trajectory_markers_[idx].color.r = 0.0f;
+                      trajectory_markers_[idx].color.g = 1.0f;
+                      trajectory_markers_[idx].color.b = 0.0f;
+                    }
                   {
                     std::ostringstream ss;
                     ss << std::fixed << std::setprecision(1) << selection_velocity_;
@@ -254,10 +264,20 @@ namespace editor_tool_server
               else {
                 int idx = i1;
                 while (true) {
-                  trajectory_markers_[idx].color.r = 0.0f;
-                  trajectory_markers_[idx].color.g = 0.0f;
-                  trajectory_markers_[idx].color.b = 1.0f;
-                  trajectory_markers_[idx].color.a = 1.0f;
+                    // 速度ごとに色を変える
+                    if (selection_velocity_ < 10.0) {
+                      trajectory_markers_[idx].color.r = 1.0f;
+                      trajectory_markers_[idx].color.g = 0.0f;
+                      trajectory_markers_[idx].color.b = 0.0f;
+                    } else if (selection_velocity_ < 20.0) {
+                      trajectory_markers_[idx].color.r = 1.0f;
+                      trajectory_markers_[idx].color.g = 1.0f;
+                      trajectory_markers_[idx].color.b = 0.0f;
+                    } else {
+                      trajectory_markers_[idx].color.r = 0.0f;
+                      trajectory_markers_[idx].color.g = 1.0f;
+                      trajectory_markers_[idx].color.b = 0.0f;
+                    }
                   {
                     std::ostringstream ss;
                     ss << std::fixed << std::setprecision(1) << selection_velocity_;
