@@ -18,6 +18,7 @@ find_package(rviz_rendering REQUIRED)
 find_package(rviz_ogre_vendor REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Widgets)
 find_package(editor_tool_srvs REQUIRED)
+find_package(std_srvs REQUIRED)
 
 include_directories(src ${OGRE_INCLUDE_DIRS} ${OGRE_INCLUDE_DIRS}/Paging)
 
@@ -29,6 +30,9 @@ include_directories(
 
 add_library(${PROJECT_NAME} SHARED
   src/csv_marker_display.cpp
+  include/rviz_editor_plugins/csv_marker_display.hpp
+  src/editor_tool.cpp
+  include/rviz_editor_plugins/editor_tool.hpp
 )
 
 ament_target_dependencies(${PROJECT_NAME} 
@@ -41,6 +45,7 @@ ament_target_dependencies(${PROJECT_NAME}
   geometry_msgs
   rviz_rendering
   rviz_ogre_vendor
+  std_srvs
 )
 
 target_link_libraries(${PROJECT_NAME} Qt5::Widgets)

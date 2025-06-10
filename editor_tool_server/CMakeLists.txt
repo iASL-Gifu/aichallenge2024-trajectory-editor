@@ -15,6 +15,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(editor_tool_srvs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 
 include_directories(
   include
@@ -31,6 +32,7 @@ ament_target_dependencies(interactive_server
   geometry_msgs
   editor_tool_srvs
   tf2_geometry_msgs
+  std_srvs
 )
 
 install(TARGETS

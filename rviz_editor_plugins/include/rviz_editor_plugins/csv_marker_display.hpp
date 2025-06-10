@@ -7,6 +7,7 @@
 # include <QtWidgets>
 # include "visualization_msgs/msg/marker_array.hpp"
 # include "editor_tool_srvs/srv/load_csv.hpp"
+# include "editor_tool_srvs/srv/select_range.hpp"
 # endif
 
 namespace rviz_editor_plugins
@@ -26,9 +27,10 @@ public Q_SLOTS:
 
 protected:
   rclcpp::Node::SharedPtr node_;
+  QLabel* label_;
   QPushButton * load_button_;
   QPushButton * save_button_;
-  rclcpp::Client<editor_tool_srvs::srv::LoadCsv>::SharedPtr service_client_;
+  rclcpp::Client<editor_tool_srvs::srv::LoadCsv>::SharedPtr load_client_;
   void loadCsv();
   void saveCsv();
 };

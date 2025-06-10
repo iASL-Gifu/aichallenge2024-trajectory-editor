@@ -7,4 +7,11 @@
       CSV Import and save 
     </description>
   </class>
+  <class name="rviz_editor_plugins/EditorTool"
+          type="rviz_editor_plugins::EditorTool"
+          base_class_type="rviz_common::Panel">
+      <description>
+        Editor Tool for manipulating markers
+      </description>
+  </class>
 </library>

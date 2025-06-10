@@ -18,6 +18,7 @@
 
 #include "editor_tool_srvs/srv/load_csv.hpp"
 #include "editor_tool_srvs/srv/select_range.hpp"
+#include "std_srvs/srv/trigger.hpp"
 
 namespace editor_tool_server
 {
@@ -46,6 +47,26 @@ namespace editor_tool_server
     void StartSelection(
       const std::shared_ptr<editor_tool_srvs::srv::SelectRange::Request>  request,
       std::shared_ptr<editor_tool_srvs::srv::SelectRange::Response>        response);
+
+    void StartParallelMove(
+      const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+      std::shared_ptr<std_srvs::srv::Trigger::Response> response);
+    
+    void ConfirmParallelMove(
+      const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+      std::shared_ptr<std_srvs::srv::Trigger::Response> response);
+    
+    void undo(
+      const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+      std::shared_ptr<std_srvs::srv::Trigger::Response> response);
+
+    void redo(
+      const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+      std::shared_ptr<std_srvs::srv::Trigger::Response> response);
+    
+    void redrawMarkers();
+    void createMoveHelperMarker();
+    void saveStateForUndo();
 
     // --- インタラクティブマーカーフィードバックハンドラ ---
 
@@ -81,16 +102,20 @@ namespace editor_tool_server
       const std::string & file_name,
       const visualization_msgs::msg::MarkerArray & marker_array);
 
+    std::vector<int> getRangeIndices(int idx1, int idx2);
+
     // --- Member variables ---
 
     /// インタラクティブマーカーを管理するサーバ
     std::unique_ptr<interactive_markers::InteractiveMarkerServer> server_;
 
-    /// CSV 読み込みサービス
+    /// Service
     rclcpp::Service<editor_tool_srvs::srv::LoadCsv>::SharedPtr load_csv_service_;
-
-    /// 選択モード開始サービス (SelectRange.srv)。呼び出すと 2 点をクリックで選べるモードに入る
     rclcpp::Service<editor_tool_srvs::srv::SelectRange>::SharedPtr select_range_service_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr start_parallel_move_service_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr confirm_parallel_move_service_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr undo_service_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr redo_service_;
 
     /// MarkerArray をまとめて publish するパブリッシャ
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
@@ -101,18 +126,21 @@ namespace editor_tool_server
     /// 「インタラクティブマーカー名(ns_id)」から trajectory_markers_ のインデックスを引けるマップ
     std::unordered_map<std::string, int> name_to_index_;
 
-    // --- 選択モード関連メンバ ---
-
-    /// 選択モード中かどうか
+    /// 選択モード（速度変更用）
     bool selection_mode_{false};
-
-    /// 選択された最初のマーカーインデックス (未選択時は -1)
     int sel_idx1_{-1};
-
-    /// 選択された 2 番目のマーカーインデックス (未選択時は -1)
     int sel_idx2_{-1};
-
-    /// サービスリクエストで渡ってきた「適用する速度」
     double selection_velocity_{0.0};
+
+    // // 並列モード
+    bool parallel_mode_{false};
+    int p_sel_idx1_{-1};
+    int p_sel_idx2_{-1};
+    std::string move_marker_name_{"parallel_picker"};
+    geometry_msgs::msg::Point move_marker_prev_pos_;
+
+    // Undo/Redo バッファ（必要な場合）
+    std::vector<std::vector<visualization_msgs::msg::Marker>> undo_stack_;
+    std::vector<std::vector<visualization_msgs::msg::Marker>> redo_stack_;
   };
 } // namespace editor_tool_server
