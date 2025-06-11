@@ -19,21 +19,28 @@ namespace rviz_editor_plugins
     confirm_parallel_button_ = new QPushButton("End Parallel Move");
     undo_button_ = new QPushButton("Undo");
     redo_button_ = new QPushButton("Redo");
+    post_button_ = new QPushButton("Post Trajectory");
 
     select_range_client_ = node_->create_client<editor_tool_srvs::srv::SelectRange>("select_range");
     start_parallel_client_ = node_->create_client<std_srvs::srv::Trigger>("start_parallel_move");
     confirm_parallel_client_ = node_->create_client<std_srvs::srv::Trigger>("confirm_parallel_move");
     undo_client_ = node_->create_client<std_srvs::srv::Trigger>("undo");
     redo_client_ = node_->create_client<std_srvs::srv::Trigger>("redo");
+    publish_trajectory_client_ = node_->create_client<std_srvs::srv::Trigger>("publish_trajectory");
 
     QVBoxLayout * layout = new QVBoxLayout;
+    QGridLayout * grid_layout_parallel = new QGridLayout;
+    QGridLayout * grid_layout_unredo = new QGridLayout;
     layout->addWidget(mode_label_);
     layout->addWidget(velocity_edit_);
     layout->addWidget(select_range_button_);
-    layout->addWidget(start_parallel_button_);
-    layout->addWidget(confirm_parallel_button_);
-    layout->addWidget(undo_button_);
-    layout->addWidget(redo_button_);
+    grid_layout_parallel->addWidget(start_parallel_button_, 0, 0);
+    grid_layout_parallel->addWidget(confirm_parallel_button_, 0, 1);
+    grid_layout_unredo->addWidget(undo_button_, 0, 0);
+    grid_layout_unredo->addWidget(redo_button_, 0, 1);
+    layout->addLayout(grid_layout_parallel);
+    layout->addLayout(grid_layout_unredo);
+    layout->addWidget(post_button_);
     
     setLayout(layout);
 
@@ -42,6 +49,7 @@ namespace rviz_editor_plugins
     connect(confirm_parallel_button_, &QPushButton::clicked, this, &EditorTool::confirmParallelMove);
     connect(undo_button_, &QPushButton::clicked, this, &EditorTool::undo);
     connect(redo_button_, &QPushButton::clicked, this, &EditorTool::redo);
+    connect(post_button_, &QPushButton::clicked, this, &EditorTool::postTrajectory);
 
   }
 
@@ -155,6 +163,22 @@ namespace rviz_editor_plugins
         RCLCPP_INFO(node_->get_logger(), "Redo executed");
       } else {
         RCLCPP_ERROR(node_->get_logger(), "Failed to execute redo");
+      }
+    } else {
+      RCLCPP_ERROR(node_->get_logger(), "Service not available");
+    }
+  }
+
+  void EditorTool::postTrajectory()
+  {
+    // Post trajectory logic
+    auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
+    if (publish_trajectory_client_->wait_for_service(std::chrono::seconds(1))) {
+      auto future = publish_trajectory_client_->async_send_request(request);
+      if (rclcpp::spin_until_future_complete(node_, future) == rclcpp::FutureReturnCode::SUCCESS) {
+        RCLCPP_INFO(node_->get_logger(), "Trajectory posted");
+      } else {
+        RCLCPP_ERROR(node_->get_logger(), "Failed to post trajectory");
       }
     } else {
       RCLCPP_ERROR(node_->get_logger(), "Service not available");

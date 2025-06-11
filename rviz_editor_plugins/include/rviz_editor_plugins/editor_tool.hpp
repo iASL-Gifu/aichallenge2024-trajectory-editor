@@ -32,6 +32,7 @@ protected:
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr confirm_parallel_client_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr undo_client_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr redo_client_;
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr publish_trajectory_client_;
 
   QLabel * mode_label_;
   QLineEdit * velocity_edit_;
@@ -40,12 +41,14 @@ protected:
   QPushButton * confirm_parallel_button_;
   QPushButton * undo_button_;
   QPushButton * redo_button_;
+  QPushButton * post_button_;
 
   void startSelection();
   void stratParallelMove();
   void confirmParallelMove();
   void undo();
   void redo();
+  void postTrajectory();
 };
 
 }
