@@ -1,0 +1,17 @@
+<library path="rviz_editor_plugins">
+  <!-- ライブラリ名は CMakeLists.txt の add_library の名前と合わせる -->
+  <class name="rviz_editor_plugins/CsvMarkerDisplay"
+         type="rviz_editor_plugins::CsvMarkerDisplay"
+         base_class_type="rviz_common::Panel">
+    <description>
+      CSV Import and save 
+    </description>
+  </class>
+  <class name="rviz_editor_plugins/EditorTool"
+          type="rviz_editor_plugins::EditorTool"
+          base_class_type="rviz_common::Panel">
+      <description>
+        Editor Tool for manipulating markers
+      </description>
+  </class>
+</library>
