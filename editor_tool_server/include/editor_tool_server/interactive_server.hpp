@@ -20,6 +20,9 @@
 #include "editor_tool_srvs/srv/select_range.hpp"
 #include "std_srvs/srv/trigger.hpp"
 
+#include "autoware_auto_planning_msgs/msg/trajectory.hpp"
+#include "autoware_auto_planning_msgs/msg/trajectory_point.hpp"
+
 namespace editor_tool_server
 {
   class EditorToolServer : public rclcpp::Node
@@ -62,6 +65,9 @@ namespace editor_tool_server
 
     void redo(
       const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+      std::shared_ptr<std_srvs::srv::Trigger::Response> response);
+
+    void publishTrajectory(const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
       std::shared_ptr<std_srvs::srv::Trigger::Response> response);
     
     void redrawMarkers();
@@ -116,9 +122,11 @@ namespace editor_tool_server
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr confirm_parallel_move_service_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr undo_service_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr redo_service_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr publish_trajectory_service_;
 
     /// MarkerArray をまとめて publish するパブリッシャ
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+    rclcpp::Publisher<autoware_auto_planning_msgs::msg::Trajectory>::SharedPtr trajectory_pub_;
 
     /// 基礎となる軌跡マーカーを保持。CSV から読み込んだ順番どおりに格納
     std::vector<visualization_msgs::msg::Marker> trajectory_markers_;

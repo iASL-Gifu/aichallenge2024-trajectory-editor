@@ -66,9 +66,19 @@ namespace editor_tool_server
     );
 
 
+    publish_trajectory_service_ = this->create_service<std_srvs::srv::Trigger>(
+      "publish_trajectory",
+      std::bind(
+        &EditorToolServer::publishTrajectory, this,
+        std::placeholders::_1, std::placeholders::_2)
+    );
+
+
     // --- MarkerArray パブリッシャの初期化 ---
     marker_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
       "race_trajectory", 10);
+    trajectory_pub_ = this->create_publisher<autoware_auto_planning_msgs::msg::Trajectory>(
+      "/planning/scenario_planning/trajectory", 1);
 
     // 初期状態は選択モードオフ、インデックス -1
     selection_mode_ = false;
@@ -582,6 +592,24 @@ namespace editor_tool_server
 
     // /race_trajectory トピックにパブリッシュ
     marker_pub_->publish(publish_array);
+  }
+
+  void EditorToolServer::publishTrajectory(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
+                                          std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+  {
+    autoware_auto_planning_msgs::msg::Trajectory trajectory;
+    trajectory.header.frame_id = "map";
+    trajectory.header.stamp = this->now();
+    trajectory.points.resize(trajectory_markers_.size());
+
+    for (size_t i = 0; i < trajectory_markers_.size(); ++i) {
+      const auto & marker = trajectory_markers_[i];
+      trajectory.points[i].pose = marker.pose;
+      trajectory.points[i].longitudinal_velocity_mps = std::stod(marker.text) / 3.6;  // km/h → m/s
+      trajectory.points[i].lateral_velocity_mps = 0.0;  // 初期値はゼロ
+    }
+
+    trajectory_pub_->publish(trajectory);
   }
 
   //////////////////////////////////////////////////////////////////////////////
