@@ -40,11 +40,11 @@ namespace rviz_editor_plugins
   }
   void CsvMarkerDisplay::load(const rviz_common::Config & config)
   {
-    // Load configuration logic if needed
+    Panel::load(config);
   }
   void CsvMarkerDisplay::save(rviz_common::Config config) const
   {
-    // Save configuration logic if needed
+    Panel::save(config);
   }
   void CsvMarkerDisplay::tick()
   {
