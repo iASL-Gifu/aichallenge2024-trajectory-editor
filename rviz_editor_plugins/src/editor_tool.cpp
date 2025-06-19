@@ -55,7 +55,7 @@ namespace rviz_editor_plugins
 
   void EditorTool::onInitialize()
   {
-    // Initialization logic if needed
+    EditorTool::postTrajectory(); // Post trajectory on initialization
   }
 
   void EditorTool::load(const rviz_common::Config & config)

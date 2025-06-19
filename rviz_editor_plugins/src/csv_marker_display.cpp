@@ -36,7 +36,15 @@ namespace rviz_editor_plugins
   }
   void CsvMarkerDisplay::onInitialize()
   {
-    // Initialization logic if needed
+    auto csv_request = std::make_shared<editor_tool_srvs::srv::LoadCsv::Request>();
+    csv_request->filename = "/aichallenge/workspace/src/aichallenge-trajectory-editor/csv/centerline_15km.csv";
+    auto result = load_client_->async_send_request(csv_request);
+    label_->setText(QString("Default CSV loaded"));
+    if (!result.valid()) {
+      // RCLCPP_ERROR(node_->get_logger(), "Failed to send request to load Default CSV");
+      label_->setText(QString("Failed to load Default CSV"));
+      return;
+    }
   }
   void CsvMarkerDisplay::load(const rviz_common::Config & config)
   {
