@@ -1,4 +1,4 @@
-# aichallenge2024-trajectory-editor
+# aichallenge-trajectory-editor
 Provides a trajectory editor and a tool for generating trajectory from raceline
 
 🍀We have implemented it in Rviz. The usage is described in this [link](./rviz_plugins.md).
