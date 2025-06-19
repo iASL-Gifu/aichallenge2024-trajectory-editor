@@ -286,59 +286,46 @@ namespace editor_tool_server
           int backward_len = (i1 >= i2) ? (i1 - i2) : (N - (i2 - i1));
           bool use_forward = (forward_len <= backward_len);
 
-          if (use_forward) {
-            int idx = i1;
-            while (true) {
-                // 速度ごとに色を変える
-                if (selection_velocity_ < 10.0) {
-                  trajectory_markers_[idx].color.r = 1.0f;
-                  trajectory_markers_[idx].color.g = 0.0f;
-                  trajectory_markers_[idx].color.b = 0.0f;
-                } else if (selection_velocity_ < 20.0) {
-                  trajectory_markers_[idx].color.r = 1.0f;
-                  trajectory_markers_[idx].color.g = 1.0f;
-                  trajectory_markers_[idx].color.b = 0.0f;
-                } else {
-                  trajectory_markers_[idx].color.r = 0.0f;
-                  trajectory_markers_[idx].color.g = 1.0f;
-                  trajectory_markers_[idx].color.b = 0.0f;
-                }
-              {
-                std::ostringstream ss;
-                ss << std::fixed << std::setprecision(1) << selection_velocity_;
-                trajectory_markers_[idx].text = ss.str();
-              }
-              if (idx == i2) break;
-              idx = (idx + 1) % N;
-            }
-          }
-          else {
-            int idx = i1;
-            while (true) {
-                // 速度ごとに色を変える
-                if (selection_velocity_ < 10.0) {
-                  trajectory_markers_[idx].color.r = 1.0f;
-                  trajectory_markers_[idx].color.g = 0.0f;
-                  trajectory_markers_[idx].color.b = 0.0f;
-                } else if (selection_velocity_ < 20.0) {
-                  trajectory_markers_[idx].color.r = 1.0f;
-                  trajectory_markers_[idx].color.g = 1.0f;
-                  trajectory_markers_[idx].color.b = 0.0f;
-                } else {
-                  trajectory_markers_[idx].color.r = 0.0f;
-                  trajectory_markers_[idx].color.g = 1.0f;
-                  trajectory_markers_[idx].color.b = 0.0f;
-                }
-              {
-                std::ostringstream ss;
-                ss << std::fixed << std::setprecision(1) << selection_velocity_;
-                trajectory_markers_[idx].text = ss.str();
-              }
-              if (idx == i2) break;
-              idx = (idx - 1 + N) % N;
-            }
-          }
+          const double MIN_SPEED = 0.0;
+          const double MID_SPEED = 30.0; // 中間点（完全な黄色になる速度）
+          const double MAX_SPEED = 60.0; // 最大点（完全な赤になる速度）
 
+          // ループの進行方向を決定 (順方向なら+1, 逆方向なら-1)
+          const int direction = use_forward ? 1 : -1;
+
+          int idx = i1;
+          while (true) {
+            // --- スムーズな色分け処理 (緑→黄→赤) ---
+            double clamped_speed = std::clamp(selection_velocity_, MIN_SPEED, MAX_SPEED);
+
+            if (clamped_speed <= MID_SPEED) {
+              // 緑から黄へのグラデーション
+              float ratio = (clamped_speed - MIN_SPEED) / (MID_SPEED - MIN_SPEED);
+              trajectory_markers_[idx].color.r = ratio;           // 赤成分を 0.0 -> 1.0 へ
+              trajectory_markers_[idx].color.g = 1.0f;
+              trajectory_markers_[idx].color.b = 0.0f;
+            } else {
+              // 黄から赤へのグラデーション
+              float ratio = (clamped_speed - MID_SPEED) / (MAX_SPEED - MID_SPEED);
+              trajectory_markers_[idx].color.r = 1.0f;
+              trajectory_markers_[idx].color.g = 1.0f - ratio; // 緑成分を 1.0 -> 0.0 へ
+              trajectory_markers_[idx].color.b = 0.0f;
+            }
+            trajectory_markers_[idx].color.a = 1.0f;
+          
+            // --- テキストの設定 ---
+            {
+              std::ostringstream ss;
+              ss << std::fixed << std::setprecision(1) << selection_velocity_;
+              trajectory_markers_[idx].text = ss.str();
+            }
+          
+            // ループの終了判定
+            if (idx == i2) break;
+          
+            // インデックスを更新
+            idx = (idx + direction + N) % N;
+          }
           // 結果を publish して、選択モードを終了
           publishMarkers();
           selection_mode_ = false;
@@ -673,35 +660,35 @@ namespace editor_tool_server
     marker.scale.y = 0.5; // width
     marker.scale.z = 0.2;
 
+    // --- パラメータ設定 ---
     const double MIN_SPEED = 0.0;
     const double MID_SPEED = 30.0; // 中間点（完全な黄色になる速度）
-    const double MAX_SPEED = 60.0; // 最大点（完全な緑になる速度）
+    const double MAX_SPEED = 60.0; // 最大点（完全な赤になる速度）
 
-    // --- 色の計算 ---
+    // --- 色の計算 (緑→黄→赤) ---
     // 速度が定義した範囲外の場合に備えて、値を[MIN_SPEED, MAX_SPEED]の範囲に収めます。
     double clamped_speed = std::clamp(speed, MIN_SPEED, MAX_SPEED);
 
     if (clamped_speed <= MID_SPEED) {
-      // 赤から黄へのグラデーション (MIN_SPEED -> MID_SPEED)
+      // 緑から黄へのグラデーション (MIN_SPEED -> MID_SPEED)
       // この区間での速度の割合（0.0～1.0）を計算
       float ratio = (clamped_speed - MIN_SPEED) / (MID_SPEED - MIN_SPEED);
 
-      marker.color.r = 1.0f;
-      marker.color.g = ratio; // 緑成分を 0.0 から 1.0 へ変化させる
+      marker.color.r = ratio;           // 赤成分を 0.0 -> 1.0 へ
+      marker.color.g = 1.0f;
       marker.color.b = 0.0f;
 
     } else {
-      // 黄から緑へのグラデーション (MID_SPEED -> MAX_SPEED)
+      // 黄から赤へのグラデーション (MID_SPEED -> MAX_SPEED)
       // この区間での速度の割合（0.0～1.0）を計算
-      float ratio = (clamped_speed - MID_SPEED) / (MAX_SPEED - MIN_SPEED);
+      float ratio = (clamped_speed - MID_SPEED) / (MAX_SPEED - MID_SPEED);
 
-      marker.color.r = 1.0f - ratio; // 赤成分を 1.0 から 0.0 へ変化させる
-      marker.color.g = 1.0f;
+      marker.color.r = 1.0f;
+      marker.color.g = 1.0f - ratio; // 緑成分を 1.0 -> 0.0 へ
       marker.color.b = 0.0f;
     }
 
-    marker.color.a = 0.8f; // アルファ値（不透明度）は常に1.0
-
+    marker.color.a = 0.8f; // アルファ値（不透明度）
     return true;
   }
 
