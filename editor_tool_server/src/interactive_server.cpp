@@ -669,25 +669,38 @@ namespace editor_tool_server
     marker.pose.orientation.w = qw;
 
     // 矢印のスケール (長さ, 幅, 太さ)
-    marker.scale.x = 0.5;
-    marker.scale.y = 0.2;
+    marker.scale.x = 1.0; // length
+    marker.scale.y = 0.5; // width
     marker.scale.z = 0.2;
 
-    // 速度に応じて色分け: <10→赤, <20→黄, それ以上→緑
-    if (speed < 10.0) {
+    const double MIN_SPEED = 0.0;
+    const double MID_SPEED = 30.0; // 中間点（完全な黄色になる速度）
+    const double MAX_SPEED = 60.0; // 最大点（完全な緑になる速度）
+
+    // --- 色の計算 ---
+    // 速度が定義した範囲外の場合に備えて、値を[MIN_SPEED, MAX_SPEED]の範囲に収めます。
+    double clamped_speed = std::clamp(speed, MIN_SPEED, MAX_SPEED);
+
+    if (clamped_speed <= MID_SPEED) {
+      // 赤から黄へのグラデーション (MIN_SPEED -> MID_SPEED)
+      // この区間での速度の割合（0.0～1.0）を計算
+      float ratio = (clamped_speed - MIN_SPEED) / (MID_SPEED - MIN_SPEED);
+
       marker.color.r = 1.0f;
-      marker.color.g = 0.0f;
+      marker.color.g = ratio; // 緑成分を 0.0 から 1.0 へ変化させる
       marker.color.b = 0.0f;
-    } else if (speed < 20.0) {
-      marker.color.r = 1.0f;
-      marker.color.g = 1.0f;
-      marker.color.b = 0.0f;
+
     } else {
-      marker.color.r = 0.0f;
+      // 黄から緑へのグラデーション (MID_SPEED -> MAX_SPEED)
+      // この区間での速度の割合（0.0～1.0）を計算
+      float ratio = (clamped_speed - MID_SPEED) / (MAX_SPEED - MIN_SPEED);
+
+      marker.color.r = 1.0f - ratio; // 赤成分を 1.0 から 0.0 へ変化させる
       marker.color.g = 1.0f;
       marker.color.b = 0.0f;
     }
-    marker.color.a = 1.0f;
+
+    marker.color.a = 0.8f; // アルファ値（不透明度）は常に1.0
 
     return true;
   }
@@ -828,7 +841,7 @@ namespace editor_tool_server
     helper.name = move_marker_name_;
     helper.description = "Drag to move selected range";
     helper.pose.position = centroid;
-    helper.scale = 1.0;
+    helper.scale = 0.0;
 
     // 可視化のために単純な sphere を置く
     visualization_msgs::msg::Marker sphere;
