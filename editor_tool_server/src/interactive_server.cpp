@@ -433,7 +433,7 @@ namespace editor_tool_server
     name_to_index_[int_marker.name] = marker.id;
 
     // ── インタラクティブマーカー全体のスケールを大きめに設定（クリック可能領域を拡張） ──
-    int_marker.scale = 2.0;  // 1.0 → 2.0 にすると、かなり広めにクリックできる
+    int_marker.scale = 4.0;  // 1.0 → 2.0 にすると、かなり広めにクリックできる
 
     // マーカーの初期ポーズをそのままコピー
     int_marker.pose = marker.pose;
@@ -453,9 +453,9 @@ namespace editor_tool_server
     hit_box.id = marker.id;  // ID は同じでも別でもよい
     hit_box.type = visualization_msgs::msg::Marker::SPHERE;
     // Sphere の直径を 1.0m に設定（arrow より大きくする）
-    hit_box.scale.x = 1.0;
-    hit_box.scale.y = 1.0;
-    hit_box.scale.z = 1.0;
+    hit_box.scale.x = 2.0;
+    hit_box.scale.y = 2.0;
+    hit_box.scale.z = 2.0;
     // 完全に透明にする（見た目は見えないが RViz 上で拾われる）
     hit_box.color.r = 0.0f;
     hit_box.color.g = 0.0f;
