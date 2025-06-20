@@ -65,7 +65,8 @@ Visualization Manager:
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: MarkerArray
-      Namespaces: {}
+      Namespaces:
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
