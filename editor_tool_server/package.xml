@@ -12,6 +12,7 @@
   <depend>rviz_common</depend>
   <depend>rclcpp</depend>
   <depend>visualization_msgs</depend>
+  <depend>editor_tool_srvs</depend>
   <depend>libqt5-widgets</depend>
   <depend>rviz_rendering</depend>
   <depend>rviz_ogre_vendor</depend>
