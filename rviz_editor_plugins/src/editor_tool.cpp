@@ -60,12 +60,12 @@ namespace rviz_editor_plugins
 
   void EditorTool::load(const rviz_common::Config & config)
   {
-    // Load configuration logic if needed
+    Panel::load(config);
   }
 
   void EditorTool::save(rviz_common::Config config) const
   {
-    // Save configuration logic if needed
+    Panel::save(config);
   }
 
   void EditorTool::tick()
