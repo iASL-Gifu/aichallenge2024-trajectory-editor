@@ -35,7 +35,7 @@ add_library(${PROJECT_NAME} SHARED
   include/rviz_editor_plugins/editor_tool.hpp
 )
 
-ament_target_dependencies(${PROJECT_NAME}
+ament_target_dependencies(${PROJECT_NAME} 
   pluginlib
   rclcpp
   rviz_common
@@ -54,7 +54,7 @@ pluginlib_export_plugin_description_file(rviz_common plugin_description.xml)
 
 install(TARGETS
   ${PROJECT_NAME}
-  EXPORT ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}  
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin

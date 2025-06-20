@@ -4,7 +4,7 @@
          type="rviz_editor_plugins::CsvMarkerDisplay"
          base_class_type="rviz_common::Panel">
     <description>
-      CSV Import and save
+      CSV Import and save 
     </description>
   </class>
   <class name="rviz_editor_plugins/EditorTool"
