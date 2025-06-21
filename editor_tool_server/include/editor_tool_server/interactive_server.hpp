@@ -45,6 +45,8 @@ namespace editor_tool_server
     void LoadCsv(
       const std::shared_ptr<editor_tool_srvs::srv::LoadCsv::Request>  request,
       std::shared_ptr<editor_tool_srvs::srv::LoadCsv::Response>       response);
+    
+    void LoadCsvFile(const std::string & file_name);
 
     /// 選択モードを開始し、２点を選択した後、その間にあるマーカーを青くして速度を反映する
     void StartSelection(
@@ -67,8 +69,10 @@ namespace editor_tool_server
       const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
       std::shared_ptr<std_srvs::srv::Trigger::Response> response);
 
-    void publishTrajectory(const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+    void publishTrajectorySrv(const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
       std::shared_ptr<std_srvs::srv::Trigger::Response> response);
+
+    void publishTrajectory();
     
     void redrawMarkers();
     void createMoveHelperMarker();
@@ -123,6 +127,15 @@ namespace editor_tool_server
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr undo_service_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr redo_service_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr publish_trajectory_service_;
+
+    /// Node param
+    std::string csv_file_path_;
+    bool publish_on_initialize_;
+    float wait_seconds_;
+    rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_handle_;
+
+    rcl_interfaces::msg::SetParametersResult onParameterChange(const std::vector<rclcpp::Parameter> & parameters);
+
 
     /// MarkerArray をまとめて publish するパブリッシャ
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
