@@ -324,24 +324,7 @@ namespace editor_tool_server
 
           int idx = i1;
           while (true) {
-            // --- スムーズな色分け処理 (緑→黄→赤) ---
-            double clamped_speed = std::clamp(selection_velocity_, MIN_SPEED, MAX_SPEED);
-
-            if (clamped_speed <= MID_SPEED) {
-              // 緑から黄へのグラデーション
-              float ratio = (clamped_speed - MIN_SPEED) / (MID_SPEED - MIN_SPEED);
-              trajectory_markers_[idx].color.r = ratio;           // 赤成分を 0.0 -> 1.0 へ
-              trajectory_markers_[idx].color.g = 1.0f;
-              trajectory_markers_[idx].color.b = 0.0f;
-            } else {
-              // 黄から赤へのグラデーション
-              float ratio = (clamped_speed - MID_SPEED) / (MAX_SPEED - MID_SPEED);
-              trajectory_markers_[idx].color.r = 1.0f;
-              trajectory_markers_[idx].color.g = 1.0f - ratio; // 緑成分を 1.0 -> 0.0 へ
-              trajectory_markers_[idx].color.b = 0.0f;
-            }
-            trajectory_markers_[idx].color.a = 1.0f;
-          
+            AutoColorizeTraj(trajectory_markers_[idx], selection_velocity_);
             // --- テキストの設定 ---
             {
               std::ostringstream ss;
@@ -372,7 +355,35 @@ namespace editor_tool_server
       return;
     }
   }
-  
+  void EditorToolServer::AutoColorizeTraj(
+  visualization_msgs::msg::Marker & marker,
+  double velocity)
+  {
+    const double MIN_SPEED = 0.0;
+    const double MID_SPEED = 30.0; // 中間点（完全な黄色になる速度）
+    const double MAX_SPEED = 60.0; // 最大点（完全な赤になる速度）
+    // 速度を MIN_SPEED から MAX_SPEED の範囲にクランプする
+    double clamped_speed = std::clamp(velocity, MIN_SPEED, MAX_SPEED);
+
+    if (clamped_speed <= MID_SPEED) {
+      // 緑から黄へのグラデーション
+      // MIN_SPEED (緑) から MID_SPEED (黄) へ
+      float ratio = static_cast<float>((clamped_speed - MIN_SPEED) / (MID_SPEED - MIN_SPEED));
+      marker.color.r = ratio;           // 赤成分を 0.0 -> 1.0 へ (MIN_SPEEDで0、MID_SPEEDで1)
+      marker.color.g = 1.0f;            // 緑成分は常に最大
+      marker.color.b = 0.0f;            // 青成分は常にゼロ
+    } else {
+      // 黄から赤へのグラデーション
+      // MID_SPEED (黄) から MAX_SPEED (赤) へ
+      float ratio = static_cast<float>((clamped_speed - MID_SPEED) / (MAX_SPEED - MID_SPEED));
+      marker.color.r = 1.0f;            // 赤成分は常に最大
+      marker.color.g = 1.0f - ratio;    // 緑成分を 1.0 -> 0.0 へ (MID_SPEEDで1、MAX_SPEEDで0)
+      marker.color.b = 0.0f;            // 青成分は常にゼロ
+    }
+    marker.color.a = 1.0f; // アルファ値は常に不透明
+  }
+
+
   void EditorToolServer::alignMarker(
     const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr & feedback)
   {
@@ -670,35 +681,7 @@ namespace editor_tool_server
     marker.scale.y = 0.5; // width
     marker.scale.z = 0.2;
 
-    // --- パラメータ設定 ---
-    const double MIN_SPEED = 0.0;
-    const double MID_SPEED = 30.0; // 中間点（完全な黄色になる速度）
-    const double MAX_SPEED = 60.0; // 最大点（完全な赤になる速度）
-
-    // --- 色の計算 (緑→黄→赤) ---
-    // 速度が定義した範囲外の場合に備えて、値を[MIN_SPEED, MAX_SPEED]の範囲に収めます。
-    double clamped_speed = std::clamp(speed, MIN_SPEED, MAX_SPEED);
-
-    if (clamped_speed <= MID_SPEED) {
-      // 緑から黄へのグラデーション (MIN_SPEED -> MID_SPEED)
-      // この区間での速度の割合（0.0～1.0）を計算
-      float ratio = (clamped_speed - MIN_SPEED) / (MID_SPEED - MIN_SPEED);
-
-      marker.color.r = ratio;           // 赤成分を 0.0 -> 1.0 へ
-      marker.color.g = 1.0f;
-      marker.color.b = 0.0f;
-
-    } else {
-      // 黄から赤へのグラデーション (MID_SPEED -> MAX_SPEED)
-      // この区間での速度の割合（0.0～1.0）を計算
-      float ratio = (clamped_speed - MID_SPEED) / (MAX_SPEED - MID_SPEED);
-
-      marker.color.r = 1.0f;
-      marker.color.g = 1.0f - ratio; // 緑成分を 1.0 -> 0.0 へ
-      marker.color.b = 0.0f;
-    }
-
-    marker.color.a = 0.8f; // アルファ値（不透明度）
+    AutoColorizeTraj(marker, speed); // 色を速度に応じて設定
     return true;
   }
 
