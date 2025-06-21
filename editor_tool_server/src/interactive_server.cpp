@@ -89,10 +89,12 @@ namespace editor_tool_server
   // パラメータ宣言
     this->declare_parameter<std::string>("csv_file_path", "default.csv");
     this->declare_parameter<bool>("publish_on_initialize", true);
+    this->declare_parameter<bool>("publish_on_change", true); // 新しいパラメータ
     this->declare_parameter<float>("wait_seconds", 5.0);
 
     this->get_parameter("csv_file_path", csv_file_path_);
     this->get_parameter("publish_on_initialize", publish_on_initialize_);
+    this->get_parameter("publish_on_change", publish_on_change_); // 新しいパラメータ
     this->get_parameter("wait_seconds", wait_seconds_);
 
     // dynamic parameter callback
@@ -121,6 +123,9 @@ namespace editor_tool_server
       } else if (param.get_name() == "publish_on_initialize" && param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
         publish_on_initialize_ = param.as_bool();
         RCLCPP_INFO(this->get_logger(), "Updated publish_on_initialize: %s", publish_on_initialize_ ? "true" : "false");
+      } else if (param.get_name() == "publish_on_change" && param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) { // 新しいパラメータの更新
+        publish_on_change_ = param.as_bool();
+        RCLCPP_INFO(this->get_logger(), "Updated publish_on_change: %s", publish_on_change_ ? "true" : "false");
       }
     }
 
@@ -201,7 +206,10 @@ namespace editor_tool_server
     } else {
       RCLCPP_INFO(get_logger(), "CSV loaded and markers displayed successfully");
     }
-  
+
+    if (publish_on_change_) { // Load時もpublish_on_changeがtrueならPublish
+      publishTrajectory();
+    }
   }
 
   void EditorToolServer::StartSelection(
@@ -288,6 +296,9 @@ namespace editor_tool_server
 
         server_->applyChanges();
         publishMarkers();
+        if (publish_on_change_) { // 変更時にPublish
+          publishTrajectory();
+        }
       }
       return;
     }
@@ -374,6 +385,9 @@ namespace editor_tool_server
 
           // 結果を publish して、選択モードを終了
           publishMarkers();
+          if (publish_on_change_) { // 変更時にPublish
+            publishTrajectory();
+          }
           selection_mode_ = false;
           sel_idx1_ = sel_idx2_ = -1;
           RCLCPP_INFO(get_logger(), "Selection completed; exiting selection mode.");
@@ -386,6 +400,9 @@ namespace editor_tool_server
     if (feedback->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::POSE_UPDATE) {
       // グリッドスナップ＆方向調整（既存実装）
       alignMarker(feedback);
+      if (publish_on_change_) { // 変更時にPublish
+        publishTrajectory();
+      }
       return;
     }
   }
@@ -442,6 +459,9 @@ namespace editor_tool_server
 
     // 7) MarkerArray 全体を再生成して publish
     publishMarkers();
+    if (publish_on_change_) { // 変更時にPublish
+      publishTrajectory();
+    }
   }
   
   void EditorToolServer::makeMoveTrajectoryMarker(visualization_msgs::msg::Marker & marker)
@@ -799,6 +819,9 @@ namespace editor_tool_server
 
     // 最終状態をUndoスタックに保存
     saveStateForUndo();
+    if (publish_on_change_) { // 変更時にPublish
+      publishTrajectory();
+    }
 
     parallel_mode_ = false;
     RCLCPP_INFO(get_logger(), "ParallelMove: confirmed and mode exited.");
@@ -908,6 +931,9 @@ namespace editor_tool_server
     trajectory_markers_ = undo_stack_.back();
     undo_stack_.pop_back();
     redrawMarkers();
+    if (publish_on_change_) { // 変更時にPublish
+      publishTrajectory();
+    }
     RCLCPP_INFO(get_logger(), "Undo executed");
     response->success = true;
     response->message = "Undo OK";
@@ -927,6 +953,9 @@ namespace editor_tool_server
     trajectory_markers_ = redo_stack_.back();
     redo_stack_.pop_back();
     redrawMarkers();
+    if (publish_on_change_) { // 変更時にPublish
+      publishTrajectory();
+    }
     RCLCPP_INFO(get_logger(), "Redo executed");
     response->success = true;
     response->message = "Redo OK";
