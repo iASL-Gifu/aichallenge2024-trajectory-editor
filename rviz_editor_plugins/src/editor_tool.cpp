@@ -114,6 +114,7 @@ namespace rviz_editor_plugins
       auto future = start_parallel_client_->async_send_request(request);
       if (rclcpp::spin_until_future_complete(node_, future) == rclcpp::FutureReturnCode::SUCCESS) {
         RCLCPP_INFO(node_->get_logger(), "Parallel move started");
+        mode_label_->setText(QString("Mode: Parellel Move"));
       } else {
         RCLCPP_ERROR(node_->get_logger(), "Failed to start parallel move");
       }
@@ -130,6 +131,7 @@ namespace rviz_editor_plugins
       auto future = confirm_parallel_client_->async_send_request(request);
       if (rclcpp::spin_until_future_complete(node_, future) == rclcpp::FutureReturnCode::SUCCESS) {
         RCLCPP_INFO(node_->get_logger(), "Parallel move confirmed");
+        mode_label_ -> setText(QString("Mode: Normal"));
       } else {
         RCLCPP_ERROR(node_->get_logger(), "Failed to confirm parallel move");
       }

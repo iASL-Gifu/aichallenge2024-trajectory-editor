@@ -132,6 +132,7 @@ namespace editor_tool_server
     std::string csv_file_path_;
     bool publish_on_initialize_;
     float wait_seconds_;
+    bool publish_on_change_;
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_handle_;
 
     rcl_interfaces::msg::SetParametersResult onParameterChange(const std::vector<rclcpp::Parameter> & parameters);

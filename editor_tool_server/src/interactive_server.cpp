@@ -89,10 +89,12 @@ namespace editor_tool_server
   // パラメータ宣言
     this->declare_parameter<std::string>("csv_file_path", "default.csv");
     this->declare_parameter<bool>("publish_on_initialize", true);
+    this->declare_parameter<bool>("publish_on_change", true); // 新しいパラメータ
     this->declare_parameter<float>("wait_seconds", 5.0);
 
     this->get_parameter("csv_file_path", csv_file_path_);
     this->get_parameter("publish_on_initialize", publish_on_initialize_);
+    this->get_parameter("publish_on_change", publish_on_change_); // 新しいパラメータ
     this->get_parameter("wait_seconds", wait_seconds_);
 
     // dynamic parameter callback
@@ -121,6 +123,9 @@ namespace editor_tool_server
       } else if (param.get_name() == "publish_on_initialize" && param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
         publish_on_initialize_ = param.as_bool();
         RCLCPP_INFO(this->get_logger(), "Updated publish_on_initialize: %s", publish_on_initialize_ ? "true" : "false");
+      } else if (param.get_name() == "publish_on_change" && param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) { // 新しいパラメータの更新
+        publish_on_change_ = param.as_bool();
+        RCLCPP_INFO(this->get_logger(), "Updated publish_on_change: %s", publish_on_change_ ? "true" : "false");
       }
     }
 
@@ -201,7 +206,10 @@ namespace editor_tool_server
     } else {
       RCLCPP_INFO(get_logger(), "CSV loaded and markers displayed successfully");
     }
-  
+
+    if (publish_on_change_) { // Load時もpublish_on_changeがtrueならPublish
+      publishTrajectory();
+    }
   }
 
   void EditorToolServer::StartSelection(
@@ -239,6 +247,11 @@ namespace editor_tool_server
           auto it = name_to_index_.find(mname);
           if (it != name_to_index_.end()) {
             p_sel_idx1_ = it->second;
+            //colorize first selected marker
+            trajectory_markers_[p_sel_idx1_].color.r = 0.5f;
+            trajectory_markers_[p_sel_idx1_].color.g = 0.5f;
+            trajectory_markers_[p_sel_idx1_].color.b = 0.5f;
+            trajectory_markers_[p_sel_idx1_].color.a = 1.0f;
             RCLCPP_DEBUG(get_logger(), "ParallelMove: first index selected: %d", p_sel_idx1_);
           }
         return;
@@ -247,6 +260,10 @@ namespace editor_tool_server
           auto it = name_to_index_.find(mname);
           if (it != name_to_index_.end() && it->second != p_sel_idx1_) {
             p_sel_idx2_ = it->second;
+            trajectory_markers_[p_sel_idx2_].color.r = 0.5f;
+            trajectory_markers_[p_sel_idx2_].color.g = 0.5f;
+            trajectory_markers_[p_sel_idx2_].color.b = 0.5f;
+            trajectory_markers_[p_sel_idx2_].color.a = 1.0f;
             RCLCPP_DEBUG(get_logger(), "ParallelMove: second index selected: %d", p_sel_idx2_);
 
             // 2） 選択範囲確定 ⇒ 移動マーカーを生成
@@ -288,6 +305,9 @@ namespace editor_tool_server
 
         server_->applyChanges();
         publishMarkers();
+        if (publish_on_change_) { // 変更時にPublish
+          publishTrajectory();
+        }
       }
       return;
     }
@@ -301,9 +321,19 @@ namespace editor_tool_server
         if (sel_idx1_ < 0) {
           sel_idx1_ = clicked_idx;
           RCLCPP_DEBUG(get_logger(), "Selected first index: %d", sel_idx1_);
+          // set color for first selection
+          trajectory_markers_[sel_idx1_].color.r = 0.5f;
+          trajectory_markers_[sel_idx1_].color.g = 0.5f;
+          trajectory_markers_[sel_idx1_].color.b = 0.5f;
+          trajectory_markers_[sel_idx1_].color.a = 1.0f;
         }
         else if (sel_idx2_ < 0 && clicked_idx != sel_idx1_) {
           sel_idx2_ = clicked_idx;
+          trajectory_markers_[sel_idx2_].color.r = 0.5f;
+          trajectory_markers_[sel_idx2_].color.g = 0.5f;
+          trajectory_markers_[sel_idx2_].color.b = 0.5f;
+          trajectory_markers_[sel_idx2_].color.a = 1.0f;
+
           RCLCPP_DEBUG(get_logger(), "Selected second index: %d", sel_idx2_);
 
           // ── ２点選択完了：範囲ハイライト＆速度反映ロジック ──
@@ -370,6 +400,9 @@ namespace editor_tool_server
 
           // 結果を publish して、選択モードを終了
           publishMarkers();
+          if (publish_on_change_) { // 変更時にPublish
+            publishTrajectory();
+          }
           selection_mode_ = false;
           sel_idx1_ = sel_idx2_ = -1;
           RCLCPP_INFO(get_logger(), "Selection completed; exiting selection mode.");
@@ -382,6 +415,9 @@ namespace editor_tool_server
     if (feedback->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::POSE_UPDATE) {
       // グリッドスナップ＆方向調整（既存実装）
       alignMarker(feedback);
+      if (publish_on_change_) { // 変更時にPublish
+        publishTrajectory();
+      }
       return;
     }
   }
@@ -438,6 +474,9 @@ namespace editor_tool_server
 
     // 7) MarkerArray 全体を再生成して publish
     publishMarkers();
+    if (publish_on_change_) { // 変更時にPublish
+      publishTrajectory();
+    }
   }
   
   void EditorToolServer::makeMoveTrajectoryMarker(visualization_msgs::msg::Marker & marker)
@@ -795,6 +834,9 @@ namespace editor_tool_server
 
     // 最終状態をUndoスタックに保存
     saveStateForUndo();
+    if (publish_on_change_) { // 変更時にPublish
+      publishTrajectory();
+    }
 
     parallel_mode_ = false;
     RCLCPP_INFO(get_logger(), "ParallelMove: confirmed and mode exited.");
@@ -832,18 +874,18 @@ namespace editor_tool_server
     helper.name = move_marker_name_;
     helper.description = "Drag to move selected range";
     helper.pose.position = centroid;
-    helper.scale = 1.0;
+    helper.scale = 3.0;
 
     // 可視化のために単純な sphere を置く
     visualization_msgs::msg::Marker sphere;
     sphere.type = visualization_msgs::msg::Marker::SPHERE;
-    sphere.scale.x = 1.0;
-    sphere.scale.y = 1.0;
-    sphere.scale.z = 1.0;
+    sphere.scale.x = 3.0;
+    sphere.scale.y = 3.0;
+    sphere.scale.z = 3.0;
     sphere.color.r = 0.2f;
-    sphere.color.g = 0.6f;
+    sphere.color.g = 0.8f;
     sphere.color.b = 1.0f;
-    sphere.color.a = 0.8f;
+    sphere.color.a = 1.0f;
     std::string ns = "helper";
     sphere.ns = ns;
     sphere.id = 0;
@@ -904,6 +946,9 @@ namespace editor_tool_server
     trajectory_markers_ = undo_stack_.back();
     undo_stack_.pop_back();
     redrawMarkers();
+    if (publish_on_change_) { // 変更時にPublish
+      publishTrajectory();
+    }
     RCLCPP_INFO(get_logger(), "Undo executed");
     response->success = true;
     response->message = "Undo OK";
@@ -923,6 +968,9 @@ namespace editor_tool_server
     trajectory_markers_ = redo_stack_.back();
     redo_stack_.pop_back();
     redrawMarkers();
+    if (publish_on_change_) { // 変更時にPublish
+      publishTrajectory();
+    }
     RCLCPP_INFO(get_logger(), "Redo executed");
     response->success = true;
     response->message = "Redo OK";
