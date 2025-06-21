@@ -301,6 +301,10 @@ namespace editor_tool_server
         if (sel_idx1_ < 0) {
           sel_idx1_ = clicked_idx;
           RCLCPP_DEBUG(get_logger(), "Selected first index: %d", sel_idx1_);
+          // set color for first selection
+          trajectory_markers_[sel_idx1_].color.r = 0.5f;
+          trajectory_markers_[sel_idx1_].color.g = 0.5f;
+          trajectory_markers_[sel_idx1_].color.b = 0.5f;
         }
         else if (sel_idx2_ < 0 && clicked_idx != sel_idx1_) {
           sel_idx2_ = clicked_idx;
