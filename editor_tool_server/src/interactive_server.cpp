@@ -247,6 +247,11 @@ namespace editor_tool_server
           auto it = name_to_index_.find(mname);
           if (it != name_to_index_.end()) {
             p_sel_idx1_ = it->second;
+            //colorize first selected marker
+            trajectory_markers_[p_sel_idx1_].color.r = 0.5f;
+            trajectory_markers_[p_sel_idx1_].color.g = 0.5f;
+            trajectory_markers_[p_sel_idx1_].color.b = 0.5f;
+            trajectory_markers_[p_sel_idx1_].color.a = 1.0f;
             RCLCPP_DEBUG(get_logger(), "ParallelMove: first index selected: %d", p_sel_idx1_);
           }
         return;
@@ -255,6 +260,10 @@ namespace editor_tool_server
           auto it = name_to_index_.find(mname);
           if (it != name_to_index_.end() && it->second != p_sel_idx1_) {
             p_sel_idx2_ = it->second;
+            trajectory_markers_[p_sel_idx2_].color.r = 0.5f;
+            trajectory_markers_[p_sel_idx2_].color.g = 0.5f;
+            trajectory_markers_[p_sel_idx2_].color.b = 0.5f;
+            trajectory_markers_[p_sel_idx2_].color.a = 1.0f;
             RCLCPP_DEBUG(get_logger(), "ParallelMove: second index selected: %d", p_sel_idx2_);
 
             // 2） 選択範囲確定 ⇒ 移動マーカーを生成
@@ -316,9 +325,15 @@ namespace editor_tool_server
           trajectory_markers_[sel_idx1_].color.r = 0.5f;
           trajectory_markers_[sel_idx1_].color.g = 0.5f;
           trajectory_markers_[sel_idx1_].color.b = 0.5f;
+          trajectory_markers_[sel_idx1_].color.a = 1.0f;
         }
         else if (sel_idx2_ < 0 && clicked_idx != sel_idx1_) {
           sel_idx2_ = clicked_idx;
+          trajectory_markers_[sel_idx2_].color.r = 0.5f;
+          trajectory_markers_[sel_idx2_].color.g = 0.5f;
+          trajectory_markers_[sel_idx2_].color.b = 0.5f;
+          trajectory_markers_[sel_idx2_].color.a = 1.0f;
+
           RCLCPP_DEBUG(get_logger(), "Selected second index: %d", sel_idx2_);
 
           // ── ２点選択完了：範囲ハイライト＆速度反映ロジック ──
@@ -859,18 +874,18 @@ namespace editor_tool_server
     helper.name = move_marker_name_;
     helper.description = "Drag to move selected range";
     helper.pose.position = centroid;
-    helper.scale = 1.0;
+    helper.scale = 3.0;
 
     // 可視化のために単純な sphere を置く
     visualization_msgs::msg::Marker sphere;
     sphere.type = visualization_msgs::msg::Marker::SPHERE;
-    sphere.scale.x = 1.0;
-    sphere.scale.y = 1.0;
-    sphere.scale.z = 1.0;
+    sphere.scale.x = 3.0;
+    sphere.scale.y = 3.0;
+    sphere.scale.z = 3.0;
     sphere.color.r = 0.2f;
-    sphere.color.g = 0.6f;
+    sphere.color.g = 0.8f;
     sphere.color.b = 1.0f;
-    sphere.color.a = 0.8f;
+    sphere.color.a = 1.0f;
     std::string ns = "helper";
     sphere.ns = ns;
     sphere.id = 0;
