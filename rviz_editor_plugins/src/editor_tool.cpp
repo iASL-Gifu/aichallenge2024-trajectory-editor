@@ -56,6 +56,7 @@ namespace rviz_editor_plugins
   void EditorTool::onInitialize()
   {
     // Initialization logic if needed
+    RCLCPP_INFO(node_->get_logger(), "EditorTool initialized");
   }
 
   void EditorTool::load(const rviz_common::Config & config)
