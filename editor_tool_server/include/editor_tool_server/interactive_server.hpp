@@ -72,6 +72,7 @@ namespace editor_tool_server
     void publishTrajectorySrv(const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
       std::shared_ptr<std_srvs::srv::Trigger::Response> response);
 
+    void AutoColorizeTraj(visualization_msgs::msg::Marker & marker, double velocity);
     void publishTrajectory();
     
     void redrawMarkers();
