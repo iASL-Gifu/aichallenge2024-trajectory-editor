@@ -11,6 +11,7 @@
   <depend>pluginlib</depend>
   <depend>rviz_common</depend>
   <depend>rclcpp</depend>
+  <depend>editor_tool_srvs</depend>
   <depend>visualization_msgs</depend>
   <depend>libqt5-widgets</depend>
   <depend>rviz_rendering</depend>

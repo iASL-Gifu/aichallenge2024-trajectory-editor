@@ -37,14 +37,15 @@ namespace rviz_editor_plugins
   void CsvMarkerDisplay::onInitialize()
   {
     // Initialization logic if needed
+    RCLCPP_INFO(node_->get_logger(), "CsvMarkerDisplay initialized");
   }
   void CsvMarkerDisplay::load(const rviz_common::Config & config)
   {
-    // Load configuration logic if needed
+    Panel::load(config);
   }
   void CsvMarkerDisplay::save(rviz_common::Config config) const
   {
-    // Save configuration logic if needed
+    Panel::save(config);
   }
   void CsvMarkerDisplay::tick()
   {

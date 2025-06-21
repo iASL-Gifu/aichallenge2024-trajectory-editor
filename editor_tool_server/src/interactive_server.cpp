@@ -69,7 +69,7 @@ namespace editor_tool_server
     publish_trajectory_service_ = this->create_service<std_srvs::srv::Trigger>(
       "publish_trajectory",
       std::bind(
-        &EditorToolServer::publishTrajectory, this,
+        &EditorToolServer::publishTrajectorySrv, this,
         std::placeholders::_1, std::placeholders::_2)
     );
 
@@ -84,14 +84,52 @@ namespace editor_tool_server
     selection_mode_ = false;
     sel_idx1_ = sel_idx2_ = -1;
     selection_velocity_ = 0.0;
+
+
+  // パラメータ宣言
+    this->declare_parameter<std::string>("csv_file_path", "default.csv");
+    this->declare_parameter<bool>("publish_on_initialize", true);
+    this->declare_parameter<float>("wait_seconds", 5.0);
+
+    this->get_parameter("csv_file_path", csv_file_path_);
+    this->get_parameter("publish_on_initialize", publish_on_initialize_);
+    this->get_parameter("wait_seconds", wait_seconds_);
+
+    // dynamic parameter callback
+    param_callback_handle_ = this->add_on_set_parameters_callback(
+      std::bind(&EditorToolServer::onParameterChange, this, std::placeholders::_1)
+    );
+
+    if (publish_on_initialize_) {
+
+      RCLCPP_INFO(this->get_logger(), "Waiting for %f seconds before loading CSV and publishing markers.", wait_seconds_);
+      rclcpp::sleep_for(std::chrono::milliseconds(static_cast<int>(wait_seconds_ * 1000)));
+      LoadCsvFile(csv_file_path_);  // 既存のcsv読み込み処理
+      publishTrajectory();   // trajectory_markers_ を元に MarkerArray publish
+    }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  //
-  // CSV を読み込んで trajectory_markers_ を初期化し、
-  // インタラクティブマーカーを生成 ⇒ 最後に publishMarkers() でトピックに流す
-  //
-  //////////////////////////////////////////////////////////////////////////////
+  rcl_interfaces::msg::SetParametersResult EditorToolServer::onParameterChange(
+    const std::vector<rclcpp::Parameter> & parameters)
+  {
+    for (const auto & param : parameters) {
+      if (param.get_name() == "csv_file_path" && param.get_type() == rclcpp::ParameterType::PARAMETER_STRING) {
+        csv_file_path_ = param.as_string();
+        RCLCPP_INFO(this->get_logger(), "Updated csv_file_path: %s", csv_file_path_.c_str());
+        LoadCsvFile(csv_file_path_);
+        publishTrajectory();
+      } else if (param.get_name() == "publish_on_initialize" && param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
+        publish_on_initialize_ = param.as_bool();
+        RCLCPP_INFO(this->get_logger(), "Updated publish_on_initialize: %s", publish_on_initialize_ ? "true" : "false");
+      }
+    }
+
+    rcl_interfaces::msg::SetParametersResult result;
+    result.successful = true;
+    result.reason = "Parameters updated successfully.";
+    return result;
+  }
+
   void EditorToolServer::LoadCsv(
     const std::shared_ptr<editor_tool_srvs::srv::LoadCsv::Request> request,
     std::shared_ptr<editor_tool_srvs::srv::LoadCsv::Response> /*response*/)
@@ -101,11 +139,16 @@ namespace editor_tool_server
       RCLCPP_ERROR(get_logger(), "LoadCsv: filename is empty");
       return;
     }
-    RCLCPP_INFO(get_logger(), "Loading CSV file: %s", fileName.c_str());
 
-    std::ifstream ifs(fileName);
+    LoadCsvFile(fileName);
+  }
+
+  void EditorToolServer::LoadCsvFile(const std::string & file_name)
+  {
+    RCLCPP_INFO(get_logger(), "Loading CSV file: %s", file_name.c_str());
+    std::ifstream ifs(file_name);
     if (!ifs.is_open()) {
-      RCLCPP_ERROR(get_logger(), "Failed to open file: %s", fileName.c_str());
+      RCLCPP_ERROR(get_logger(), "Failed to open file: %s", file_name.c_str());
       return;
     }
 
@@ -158,15 +201,9 @@ namespace editor_tool_server
     } else {
       RCLCPP_INFO(get_logger(), "CSV loaded and markers displayed successfully");
     }
+  
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  //
-  // 選択モードを開始するサービスコールバック
-  //  - request->velocity: ２点選択後に間のマーカーに反映する速度値
-  //  - レスポンスの success は省略せず true/false を返す
-  //
-  //////////////////////////////////////////////////////////////////////////////
   void EditorToolServer::StartSelection(
     const std::shared_ptr<editor_tool_srvs::srv::SelectRange::Request> request,
     std::shared_ptr<editor_tool_srvs::srv::SelectRange::Response> response)
@@ -189,20 +226,12 @@ namespace editor_tool_server
       selection_velocity_);
     response->success = true;
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  //
-  // インタラクティブマーカーへのフィードバックを処理
-  //  - 通常はサーバに反映するロギングのみ
-  //  - ただし selection_mode_ が true のとき、BUTTON_CLICK で２点を選択
-  //    ⇒ ２つ目が選ばれた段階で青くハイライトして速度を反映
-  //
-  //////////////////////////////////////////////////////////////////////////////
+  
   void EditorToolServer::processFeedback(
     const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr & feedback)
   {
     const std::string &mname = feedback->marker_name;
-    RCLCPP_INFO(get_logger(), "Feedback received: %s, event: %d", mname.c_str(), feedback->event_type);
+    RCLCPP_DEBUG(get_logger(), "Feedback received: %s, event: %d", mname.c_str(), feedback->event_type);
     // ── 並行移動モード中の処理 ──
     if (parallel_mode_) {
       // １） まだ範囲未選択：2点選択待ち（BUTTON_CLICK で2つのインデックスを取得）
@@ -210,7 +239,7 @@ namespace editor_tool_server
           auto it = name_to_index_.find(mname);
           if (it != name_to_index_.end()) {
             p_sel_idx1_ = it->second;
-            RCLCPP_INFO(get_logger(), "ParallelMove: first index selected: %d", p_sel_idx1_);
+            RCLCPP_DEBUG(get_logger(), "ParallelMove: first index selected: %d", p_sel_idx1_);
           }
         return;
       }
@@ -218,7 +247,7 @@ namespace editor_tool_server
           auto it = name_to_index_.find(mname);
           if (it != name_to_index_.end() && it->second != p_sel_idx1_) {
             p_sel_idx2_ = it->second;
-            RCLCPP_INFO(get_logger(), "ParallelMove: second index selected: %d", p_sel_idx2_);
+            RCLCPP_DEBUG(get_logger(), "ParallelMove: second index selected: %d", p_sel_idx2_);
 
             // 2） 選択範囲確定 ⇒ 移動マーカーを生成
             createMoveHelperMarker();
@@ -271,11 +300,11 @@ namespace editor_tool_server
 
         if (sel_idx1_ < 0) {
           sel_idx1_ = clicked_idx;
-          RCLCPP_INFO(get_logger(), "Selected first index: %d", sel_idx1_);
+          RCLCPP_DEBUG(get_logger(), "Selected first index: %d", sel_idx1_);
         }
         else if (sel_idx2_ < 0 && clicked_idx != sel_idx1_) {
           sel_idx2_ = clicked_idx;
-          RCLCPP_INFO(get_logger(), "Selected second index: %d", sel_idx2_);
+          RCLCPP_DEBUG(get_logger(), "Selected second index: %d", sel_idx2_);
 
           // ── ２点選択完了：範囲ハイライト＆速度反映ロジック ──
           const int N = static_cast<int>(trajectory_markers_.size());
@@ -343,14 +372,7 @@ namespace editor_tool_server
       return;
     }
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  //
-  // alignMarker の修正：
-  //  - グリッドスナップ後、古い位置から f=0.1 倍だけ移動
-  //  - さらに「次のマーカーの方向を向く」ようにオリエンテーションを再計算
-  //
-  //////////////////////////////////////////////////////////////////////////////
+  
   void EditorToolServer::alignMarker(
     const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr & feedback)
   {
@@ -404,12 +426,7 @@ namespace editor_tool_server
     // 7) MarkerArray 全体を再生成して publish
     publishMarkers();
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  //
-  // インタラクティブマーカーを作成する際、クリック可能領域（ヒットボックス）を拡大する実装
-  //
-  //////////////////////////////////////////////////////////////////////////////
+  
   void EditorToolServer::makeMoveTrajectoryMarker(visualization_msgs::msg::Marker & marker)
   {
     visualization_msgs::msg::InteractiveMarker int_marker;
@@ -470,11 +487,7 @@ namespace editor_tool_server
       visualization_msgs::msg::InteractiveMarkerFeedback::POSE_UPDATE);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  //
-  // MarkerArray の中のポイント列を「ライン」と「速度ラベル」に変換して末尾に追加
-  //
-  //////////////////////////////////////////////////////////////////////////////
+  
   bool EditorToolServer::markerPointsToVelocityLine(
     visualization_msgs::msg::MarkerArray & marker_array)
   {
@@ -564,11 +577,7 @@ namespace editor_tool_server
     return true;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  //
-  // MarkerArray 全体を publish する。基礎の trajectory_markers_ → ライン＋速度ラベルを付加 → publish
-  //
-  //////////////////////////////////////////////////////////////////////////////
+  
   void EditorToolServer::publishMarkers()
   {
     visualization_msgs::msg::MarkerArray publish_array;
@@ -581,8 +590,16 @@ namespace editor_tool_server
     marker_pub_->publish(publish_array);
   }
 
-  void EditorToolServer::publishTrajectory(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
+  void EditorToolServer::publishTrajectorySrv(const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
                                           std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+  {
+    RCLCPP_INFO(get_logger(), "Publishing trajectory...");
+    publishTrajectory();
+    response->success = true;
+    response->message = "Trajectory published successfully.";
+  }
+
+  void EditorToolServer::publishTrajectory()
   {
     autoware_auto_planning_msgs::msg::Trajectory trajectory;
     trajectory.header.frame_id = "map";
@@ -598,14 +615,7 @@ namespace editor_tool_server
 
     trajectory_pub_->publish(trajectory);
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  //
-  // 1 行の CSV をパースして Marker を構築
-  //   フォーマット: x,y,z,qx,qy,qz,qw,speed (m/s)
-  //   内部では speed → km/h に変換して text に入れる
-  //
-  //////////////////////////////////////////////////////////////////////////////
+  
   bool EditorToolServer::parseLineToMarker(
     const std::string & line,
     int id,
@@ -692,12 +702,6 @@ namespace editor_tool_server
     return true;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  //
-  // MarkerArray を CSV に保存する (基礎マーカーのみ)
-  //   text に入っている km/h を m/s に戻して書き込む
-  //
-  //////////////////////////////////////////////////////////////////////////////
   bool EditorToolServer::saveCsv(
     const std::string & file_name,
     const visualization_msgs::msg::MarkerArray & marker_array)

@@ -1,0 +1,5 @@
+/**:
+    ros__parameters:
+      csv_file_path: "/path/to/trajectory.csv"
+      publish_on_initialize: true
+      wait_seconds: 2.0
