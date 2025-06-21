@@ -765,6 +765,7 @@ namespace editor_tool_server
     const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
     std::shared_ptr<std_srvs::srv::Trigger::Response> response)
   {
+    (void) request; 
     if (selection_mode_ || parallel_mode_) {
       RCLCPP_WARN(get_logger(), "Cannot start parallel move: already in selection or parallel mode");
       response->success = false;
@@ -782,6 +783,7 @@ namespace editor_tool_server
     const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
     std::shared_ptr<std_srvs::srv::Trigger::Response> response)
   {
+    (void) request;
     if (!parallel_mode_) {
       RCLCPP_WARN(get_logger(), "ConfirmParallelMove called but not in parallel mode");
       response->success = false;
@@ -894,6 +896,7 @@ namespace editor_tool_server
     const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
     std::shared_ptr<std_srvs::srv::Trigger::Response> response)
   {
+    (void) req;
     if (undo_stack_.empty()) {
       RCLCPP_WARN(get_logger(), "Nothing to undo");
       response->success = false;
@@ -913,6 +916,7 @@ namespace editor_tool_server
     const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
     std::shared_ptr<std_srvs::srv::Trigger::Response> response)
   {
+    (void) req;
     if (redo_stack_.empty()) {
       RCLCPP_WARN(get_logger(), "Nothing to redo");
       response->success = false;
